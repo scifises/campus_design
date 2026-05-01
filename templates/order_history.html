@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}My Orders — Campus Design{% endblock %}
+
+{% block content %}
+<div class="container mt-4 pb-5">
+    <h2 class="fw-bold mb-4">My Orders</h2>
+
+    {% for order in orders %}
+    <div class="card-plain mb-4 p-4" style="background:#FAFAFA; border:2px solid var(--orange)!important; border-radius:12px;">
+        <!-- 订单头部 -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+            <div>
+                <h5 class="fw-bold mb-1">Order #{{ order.id }}</h5>
+                <span class="text-muted small">{{ order.created_at|date:"M d, Y H:i" }}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                {% if order.status == 'paid' %}
+                <span class="badge bg-success">Paid</span>
+                {% elif order.status == 'shipped' %}
+                <span class="badge bg-info">Shipped</span>
+                {% elif order.status == 'completed' %}
+                <span class="badge bg-primary">Completed</span>
+                {% elif order.status == 'cancelled' %}
+                <span class="badge bg-danger">Cancelled</span>
+                {% else %}
+                <span class="badge bg-warning text-dark">Pending</span>
+                {% endif %}
+                <span class="fw-bold" style="color:var(--pink-deep);font-size:1.1rem;">
+                    RM {{ order.total_amount }}
+                </span>
+            </div>
+        </div>
+
+        <!-- 收货信息 -->
+        <div class="mb-3 p-3 rounded" style="background:#fff;">
+            <div class="row small">
+                <div class="col-md-4">
+                    <strong class="text-muted">Recipient</strong><br>
+                    {{ order.full_name }}
+                </div>
+                <div class="col-md-4">
+                    <strong class="text-muted">Email</strong><br>
+                    {{ order.email }}
+                </div>
+                <div class="col-md-4">
+                    <strong class="text-muted">Phone</strong><br>
+                    {{ order.phone|default:"—" }}
+                </div>
+            </div>
+            <div class="small mt-2">
+                <strong class="text-muted">Address</strong><br>
+                {{ order.address }}
+            </div>
+        </div>
+
+        <!-- 商品明细 -->
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Product</th>
+                        <th>Designer</th>
+                        <th>Size</th>
+                        <th>Qty</th>
+                        <th class="text-end">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order.items.all %}
+                    <tr>
+                        <td class="fw-semibold">
+                            <a href="{% url 'product_detail' item.product.pk %}"
+                               class="text-decoration-none" style="color:var(--txt);">
+                                {{ item.product.title }}
+                            </a>
+                        </td>
+                        <td class="text-muted small">
+                            {{ item.seller.get_full_name|default:item.seller.username }}
+                        </td>
+                        <td>{{ item.size }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td class="text-end fw-bold">RM {{ item.subtotal }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% empty %}
+    <div class="text-center py-5">
+        <div class="display-1 mb-3">📦</div>
+        <h4 class="fw-bold">No orders yet</h4>
+        <p class="text-muted mb-4">You haven't placed any orders. Start shopping!</p>
+        <a href="{% url 'index' %}" class="btn btn-pink px-5">Browse Designs</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

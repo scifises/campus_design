@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}My Cart — Campus Design{% endblock %}
+
+{% block content %}
+<div class="container mt-4 pb-5">
+    <a href="{% url 'index' %}" class="text-muted small mb-3 d-inline-block">← MY CART</a>
+    {% if cart_items %}
+    <div class="row g-4">
+        <div class="col-lg-8">
+            {% for item in cart_items %}
+            <div class="card-plain p-3 mb-3" style="background:#FAFAFA;">
+                <div class="d-flex align-items-center gap-3">
+                    {% if item.product.image %}
+                    <a href="{% url 'product_detail' item.product.pk %}">
+                        <img src="{{ item.product.image.url }}" class="rounded"
+                             style="width:80px;height:80px;object-fit:cover;border:1px solid #eee;"></a>
+                    {% else %}
+                    <div class="rounded d-flex align-items-center justify-content-center bg-white"
+                         style="width:80px;height:80px;border:1px solid #eee;">👕</div>
+                    {% endif %}
+                    <div class="flex-grow-1">
+                        <h6 class="fw-bold mb-1">
+                            <a href="{% url 'product_detail' item.product.pk %}">{{ item.product.title }}</a>
+                        </h6>
+                        <p class="text-muted small mb-0">Size: {{ item.size }} · By {{ item.product.seller.get_full_name|default:item.product.seller.username }}</p>
+                    </div>
+                    <form method="post" action="{% url 'update_cart' item.pk %}" class="d-flex align-items-center gap-1">
+                        {% csrf_token %}
+                        <button type="submit" name="quantity" value="{{ item.quantity|add:'-1' }}"
+                                class="btn btn-sm btn-outline-secondary px-2">−</button>
+                        <span class="fw-bold mx-1" style="min-width:20px;text-align:center;">{{ item.quantity }}</span>
+                        <button type="submit" name="quantity" value="{{ item.quantity|add:'1' }}"
+                                class="btn btn-sm btn-outline-secondary px-2">+</button>
+                    </form>
+                    <span class="fw-bold" style="color:var(--pink-deep);min-width:80px;text-align:right;">
+                        RM {{ item.subtotal }}</span>
+                    <form method="post" action="{% url 'remove_from_cart' item.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger px-2" title="Remove">✕</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="col-lg-4">
+            <div class="card-plain p-4" style="background:#FFFCF5;border:2px solid var(--orange)!important;position:sticky;top:80px;">
+                <h5 class="fw-bold mb-3">Order Summary</h5>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">Subtotal</span><span>RM {{ total }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-3">
+                    <span class="text-muted">Shipping</span>
+                    <span class="text-success fw-semibold">Free</span>
+                </div>
+                <hr style="border-color:var(--orange);">
+                <div class="d-flex justify-content-between mb-4">
+                    <h5 class="fw-bold mb-0">Total</h5>
+                    <h5 class="fw-bold mb-0" style="color:var(--pink-deep);">RM {{ total }}</h5>
+                </div>
+                <form method="post" action="{% url 'checkout' %}">
+                    {% csrf_token %}
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold small">Full Name</label>
+                        {{ form.full_name }}
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold small">Email</label>
+                        {{ form.email }}
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold small">Address</label>
+                        {{ form.address }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Phone
+                            <span class="text-muted">(optional)</span></label>
+                        {{ form.phone }}
+                    </div>
+                    <button type="submit" class="btn btn-orange w-100 py-3 fw-bold">✅ PLACE ORDER</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <div class="display-1 mb-3">🛒</div>
+        <h4 class="fw-bold">Your cart is empty</h4>
+        <p class="text-muted mb-4">Browse our collection and find something you love!</p>
+        <a href="{% url 'index' %}" class="btn btn-pink px-5">Start Shopping</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

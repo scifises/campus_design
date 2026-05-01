@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ product.title }} — Campus Design{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <a href="{% url 'index' %}" class="text-muted small mb-4 d-inline-block">← Back to Browse</a>
+    <div class="row g-5">
+        <div class="col-md-6">
+            <div style="border:2px solid var(--orange)!important;border-radius:12px;overflow:hidden;">
+                {% if product.image %}
+                <img src="{{ product.image.url }}" class="w-100"
+                     alt="{{ product.title }}" style="max-height:500px;object-fit:cover;">
+                {% else %}
+                <div class="d-flex align-items-center justify-content-center bg-light" style="height:400px;">
+                    <span class="display-1">👕</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <span class="badge mb-2" style="background:var(--orange);color:#444;">
+                {{ product.get_category_display }}</span>
+            <h2 class="fw-bold mb-1">{{ product.title }}</h2>
+            <p class="text-muted mb-3">Designed by
+                <strong>{{ product.seller.get_full_name|default:product.seller.username }}</strong></p>
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <span class="fw-bold fs-3" style="color:var(--pink-deep);">RM {{ product.price }}</span>
+                <span class="badge badge-rating fs-6">⭐ {{ product.rating }}</span>
+                <span class="text-muted small">{{ product.total_sales }} sold</span>
+            </div>
+            {% if product.description %}<p class="text-muted mb-4">{{ product.description }}</p>{% endif %}
+            {% if user.is_authenticated %}
+            <form method="post" action="{% url 'add_to_cart' %}" class="mb-4">
+                {% csrf_token %}
+                <input type="hidden" name="product_id" value="{{ product.pk }}">
+                <input type="hidden" name="next" value="{% url 'product_detail' product.pk %}">
+                <div class="row g-3 align-items-end">
+                    <div class="col-4">
+                        <label class="form-label fw-semibold small">Size</label>
+                        <select name="size" class="form-select">
+                            <option value="XS">XS</option><option value="S">S</option>
+                            <option value="M" selected>M</option><option value="L">L</option>
+                            <option value="XL">XL</option><option value="XXL">XXL</option>
+                        </select>
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label fw-semibold small">Qty</label>
+                        <input type="number" name="quantity" class="form-control" value="1" min="1" max="10">
+                    </div>
+                    <div class="col-5">
+                        <button type="submit" class="btn btn-pink btn-lg w-100 py-3">🛒 Add to Cart</button>
+                    </div>
+                </div>
+            </form>
+            {% else %}
+            <div class="mb-4 p-3 rounded" style="background:var(--orange);">
+                <p class="mb-2 fw-semibold">Want to purchase?</p>
+                <a href="{% url 'login' %}" class="btn btn-pink">Login</a>
+                <a href="{% url 'register' %}" class="btn btn-outline-pink ms-1">Register</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <hr class="my-5" style="border-color:var(--orange);">
+    <h4 class="fw-bold mb-4">Reviews ({{ reviews|length }})</h4>
+    {% if user.is_authenticated and not user_has_reviewed %}
+    <div class="card-plain p-4 mb-4" style="background:#FFFCF5;">
+        <h5 class="fw-bold mb-3">Leave a Review</h5>
+        <form method="post" action="{% url 'add_review' product.pk %}">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold small">Rating</label>
+                    {{ review_form.rating }}
+                </div>
+                <div class="col-md-10">
+                    <label class="form-label fw-semibold small">Comment</label>
+                    {{ review_form.comment }}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-pink mt-3">Submit Review</button>
+        </form>
+    </div>
+    {% endif %}
+    {% for r in reviews %}
+    <div class="card-plain p-3 mb-3">
+        <div class="d-flex justify-content-between">
+            <div><strong>{{ r.user.username }}</strong>
+                <span class="ms-2">
+                    {% for i in "12345" %}
+                        {% if forloop.counter <= r.rating %}<span class="star">★</span>
+                        {% else %}<span class="star-empty">★</span>{% endif %}
+                    {% endfor %}
+                </span>
+            </div>
+            <small class="text-muted">{{ r.created_at|date:"M d, Y" }}</small>
+        </div>
+        {% if r.comment %}<p class="mt-2 mb-0 text-muted">{{ r.comment }}</p>{% endif %}
+    </div>
+    {% empty %}
+    <p class="text-muted">No reviews yet. Be the first!</p>
+    {% endfor %}
+
+    {% if related_products %}
+    <hr class="my-5" style="border-color:var(--orange);">
+    <h4 class="fw-bold mb-4">
+        More from {{ product.seller.get_full_name|default:product.seller.username }}</h4>
+    <div class="row g-4">
+        {% for rp in related_products %}
+        <div class="col-sm-6 col-md-3">
+            <div class="card card-product h-100">
+                {% if rp.image %}
+                <a href="{% url 'product_detail' rp.pk %}">
+                    <img src="{{ rp.image.url }}" class="card-img-top"
+                         alt="{{ rp.title }}" style="height:180px;object-fit:cover;"></a>
+                {% endif %}
+                <div class="card-body">
+                    <h6 class="fw-bold mb-1">
+                        <a href="{% url 'product_detail' rp.pk %}">{{ rp.title }}</a></h6>
+                    <span class="fw-bold" style="color:var(--pink-deep);">RM {{ rp.price }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

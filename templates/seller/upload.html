@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}{% if editing %}Edit{% else %}Upload{% endif %} Design — Campus Design{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <nav class="col-md-2 d-none d-md-block sidebar-nav p-0 pt-4">
+            <h5 class="px-4 mb-4 fw-bold">Designer Hub</h5>
+            <a href="{% url 'seller_dashboard' %}">📊 Dashboard</a>
+            <a href="{% url 'upload_design' %}" class="active">📤 Upload Design</a>
+            <a href="{% url 'seller_inventory' %}">📦 My Inventory</a>
+        </nav>
+        <main class="col-md-10 px-md-5 py-5">
+            <h1 class="h2 fw-bold mb-4">
+                {% if editing %}Edit: {{ product.title }}{% else %}Upload New Design{% endif %}</h1>
+            <div class="card-plain p-4 bg-light w-75">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Design Title</label>
+                        {{ form.title }}
+                        {% if form.title.errors %}<div class="text-danger small mt-1">{{ form.title.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Description</label>
+                        {{ form.description }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Category</label>
+                        {{ form.category }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Upload Artwork</label>
+                        {{ form.image }}
+                        {% if editing and product.image %}
+                        <div class="mt-2">
+                            <img src="{{ product.image.url }}" style="height:100px;border-radius:8px;" alt="">
+                        </div>
+                        {% endif %}
+                        {% if form.image.errors %}<div class="text-danger small mt-1">{{ form.image.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Price (RM)</label>
+                            {{ form.price }}
+                            {% if form.price.errors %}<div class="text-danger small mt-1">{{ form.price.errors.0 }}</div>{% endif %}
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-pink px-5 py-2">
+                        {% if editing %}Save Changes{% else %}Publish Design{% endif %}</button>
+                    <a href="{% url 'seller_dashboard' %}" class="btn btn-outline-secondary ms-2 px-4 py-2">Cancel</a>
+                </form>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}

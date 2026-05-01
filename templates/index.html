@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Browse — Campus Design{% endblock %}
+
+{% block content %}
+<section class="hero-pattern py-5 mb-4">
+    <div class="container text-center py-4">
+        <h1 class="display-5 fw-bold mb-2">Unique Designs by Students</h1>
+        <p class="lead text-muted mb-4">Support campus creativity. Wear the art you love.</p>
+        <form method="get" action="{% url 'index' %}" class="search-bar col-lg-6 mx-auto">
+            <div class="input-group shadow-sm">
+                <input type="text" name="q" class="form-control border-0 py-2"
+                       placeholder="Search designs, artists…"
+                       value="{{ query }}">
+                <button class="btn btn-pink px-4" type="submit">🔍 Search</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<div class="container mb-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <h3 class="fw-bold mb-0">
+            {% if query %}Results for "{{ query }}"{% else %}Popular Designs{% endif %}
+        </h3>
+        <div class="d-flex flex-wrap gap-1">
+            <a href="{% url 'index' %}{% if query %}?q={{ query }}{% endif %}"
+               class="btn btn-sm {% if not category %}btn-pink{% else %}btn-outline-pink{% endif %}">All</a>
+            {% for val, label in cat_choices %}
+            <a href="{% url 'index' %}?category={{ val }}{% if query %}&q={{ query }}{% endif %}"
+               class="btn btn-sm {% if category == val %}btn-pink{% else %}btn-outline-pink{% endif %}">{{ label }}</a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="row g-4">
+        {% for p in products %}
+        <div class="col-sm-6 col-md-4 col-lg-3">
+            <div class="card card-product h-100">
+                <a href="{% url 'product_detail' p.pk %}">
+                    {% if p.image %}
+                    <img src="{{ p.image.url }}" class="card-img-top"
+                         alt="{{ p.title }}" style="height:220px;object-fit:cover;">
+                    {% else %}
+                    <div class="card-img-top d-flex align-items-center justify-content-center bg-light"
+                         style="height:220px;"><span class="display-4">👕</span></div>
+                    {% endif %}
+                </a>
+                <div class="card-body d-flex flex-column pb-3">
+                    <h6 class="card-title fw-bold mb-1">
+                        <a href="{% url 'product_detail' p.pk %}">{{ p.title }}</a>
+                    </h6>
+                    <p class="text-muted small mb-2">
+                        By {{ p.seller.get_full_name|default:p.seller.username }}</p>
+                    <div class="d-flex justify-content-between align-items-center mb-3 mt-auto">
+                        <span class="fw-bold fs-5" style="color:var(--pink-deep);">RM {{ p.price }}</span>
+                        <span class="badge badge-rating">⭐ {{ p.rating }}</span>
+                    </div>
+                    <form method="post" action="{% url 'add_to_cart' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="product_id" value="{{ p.pk }}">
+                        <input type="hidden" name="size" value="M">
+                        <input type="hidden" name="quantity" value="1">
+                        <button type="submit" class="btn btn-pink w-100">Add to Cart</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <div class="display-1 mb-3">🔍</div>
+            <h4 class="text-muted">No designs found</h4>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <nav class="mt-5">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if category %}&category={{ category }}{% endif %}">&laquo;</a>
+            </li>
+            {% endif %}
+            {% for n in page_obj.paginator.page_range %}
+            <li class="page-item {% if page_obj.number == n %}active{% endif %}">
+                <a class="page-link" href="?page={{ n }}{% if query %}&q={{ query }}{% endif %}{% if category %}&category={{ category }}{% endif %}">{{ n }}</a>
+            </li>
+            {% endfor %}
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if category %}&category={{ category }}{% endif %}">&raquo;</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

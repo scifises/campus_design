@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}My Inventory — Campus Design{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <nav class="col-md-2 d-none d-md-block sidebar-nav p-0 pt-4">
+            <h5 class="px-4 mb-4 fw-bold">Designer Hub</h5>
+            <a href="{% url 'seller_dashboard' %}">📊 Dashboard</a>
+            <a href="{% url 'upload_design' %}">📤 Upload Design</a>
+            <a href="{% url 'seller_inventory' %}" class="active">📦 My Inventory</a>
+        </nav>
+        <main class="col-md-10 px-md-5 py-5">
+            <h1 class="h2 fw-bold mb-4">My Inventory</h1>
+            <div class="table-responsive bg-white rounded shadow-sm p-3">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th></th><th>Title</th><th>Price</th><th>Sales</th><th>Status</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for p in products %}
+                        <tr>
+                            <td>
+                                {% if p.image %}
+                                <img src="{{ p.image.url }}" style="width:50px;height:50px;object-fit:cover;border-radius:8px;">
+                                {% else %}
+                                <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                                     style="width:50px;height:50px;border:1px dashed #ccc;">👕</div>
+                                {% endif %}
+                            </td>
+                            <td class="fw-semibold">{{ p.title }}</td>
+                            <td>RM {{ p.price }}</td>
+                            <td>{{ p.total_sales }}</td>
+                            <td>
+                                {% if p.status == 'approved' %}<span class="badge bg-success small">{{ p.get_status_display }}</span>
+                                {% elif p.status == 'pending' %}<span class="badge bg-warning text-dark small">{{ p.get_status_display }}</span>
+                                {% else %}<span class="badge bg-danger small">{{ p.get_status_display }}</span>{% endif %}
+                                {% if not p.is_published %}<span class="badge bg-secondary small">Unpublished</span>{% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'edit_design' p.pk %}" class="btn btn-sm btn-outline-secondary me-1">Edit</a>
+                                <form method="post" action="{% url 'unpublish_design' p.pk %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-danger">
+                                        {% if p.is_published %}Unpublish{% else %}Publish{% endif %}</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center py-5 text-muted">
+                            <p class="mb-2">No designs yet.</p>
+                            <a href="{% url 'upload_design' %}" class="btn btn-pink btn-sm">Upload First Design</a>
+                        </td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}

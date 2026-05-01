@@ -1,0 +1,181 @@
+{% load static %}
+{% load cart_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Campus Design{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --pink: #FFD1DC; --pink-deep: #FFAABB;
+            --orange: #FFE0BD; --orange-deep: #FFD4A8;
+            --txt: #444444; --bg: #FFFFFF;
+        }
+        body {
+            background: var(--bg); color: var(--txt);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            min-height: 100vh; display: flex; flex-direction: column;
+        }
+        main.flex-grow { flex: 1; }
+        a { color: var(--txt); text-decoration: none; }
+        a:hover { color: var(--pink-deep); }
+
+        .topnav {
+            background: #fff !important;
+            border-bottom: 2px solid var(--orange);
+            padding: .6rem 0;
+        }
+        .topnav .navbar-brand {
+            color: var(--pink-deep) !important; font-weight: 900; font-size: 1.45rem;
+        }
+        .topnav .nav-link { color: var(--txt) !important; font-weight: 500; }
+        .topnav .nav-link:hover, .topnav .nav-link.active {
+            color: var(--pink-deep) !important; font-weight: 700;
+        }
+
+        .btn-pink {
+            background: var(--pink); color: #444;
+            border: none; font-weight: 700; transition: all .25s;
+        }
+        .btn-pink:hover {
+            background: var(--pink-deep); color: #fff;
+            transform: translateY(-2px);
+        }
+        .btn-outline-pink {
+            border: 2px solid var(--pink); color: var(--txt);
+            font-weight: 700; background: transparent;
+        }
+        .btn-outline-pink:hover { background: var(--pink); color: #444; }
+        .btn-orange {
+            background: var(--orange); color: #444;
+            border: none; font-weight: 700; transition: all .25s;
+        }
+        .btn-orange:hover { background: var(--orange-deep); transform: translateY(-2px); }
+
+        .card-product {
+            border: 2px solid var(--orange) !important;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.10) !important;
+            transition: all .3s; overflow: hidden;
+        }
+        .card-product:hover {
+            box-shadow: 0 14px 36px rgba(0,0,0,.16) !important;
+            transform: translateY(-4px);
+        }
+        .card-plain {
+            border: none !important; border-radius: 12px;
+            box-shadow: 0 4px 14px rgba(0,0,0,.06) !important;
+        }
+
+        .hero-pattern {
+            background-color: var(--orange) !important;
+            background-image: url("data:image/svg+xml,%3Csvg width='52' height='26' viewBox='0 0 52 26' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.18'%3E%3Cpath d='M10 10c0-2.21-1.79-4-4-4-2.21 0-4 1.79-4 4s1.79 4 4 4c2.21 0 4-1.79 4-4zm10 8c0-2.21-1.79-4-4-4-2.21 0-4 1.79-4 4s1.79 4 4 4c2.21 0 4-1.79 4-4zm10-8c0-2.21-1.79-4-4-4-2.21 0-4 1.79-4 4s1.79 4 4 4c2.21 0 4-1.79 4-4zm10 8c0-2.21-1.79-4-4-4-2.21 0-4 1.79-4 4s1.79 4 4 4c2.21 0 4-1.79 4-4zm10-8c0-2.21-1.79-4-4-4-2.21 0-4 1.79-4 4s1.79 4 4 4c2.21 0 4-1.79 4-4z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            background-repeat: repeat; background-size: 70px;
+        }
+
+        .sidebar-nav { min-height: 100vh; background: #fff; border-right: 1px solid #eee; }
+        .sidebar-nav a {
+            color: #666 !important; text-decoration: none;
+            display: block; padding: 12px 20px;
+            border-left: 4px solid transparent; transition: .2s;
+        }
+        .sidebar-nav a:hover { background: #FFF5F5; color: var(--pink-deep) !important; }
+        .sidebar-nav a.active {
+            background: var(--orange);
+            border-left-color: var(--pink); font-weight: 700; color: var(--txt) !important;
+        }
+
+        .badge-rating { background: #fff; border: 1px solid #eee; color: var(--txt); }
+        .star { color: #FFD700; } .star-empty { color: #ddd; }
+
+        .search-bar .form-control {
+            border: 2px solid var(--orange) !important; border-radius: 8px 0 0 8px;
+        }
+        .search-bar .btn { border-radius: 0 8px 8px 0; }
+        footer { border-top: 2px solid var(--orange); }
+
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg topnav sticky-top">
+    <div class="container">
+        <a class="navbar-brand d-flex align-items-center" href="{% url 'index' %}">
+            <img src="{% static 'images/logo.png' %}" alt="Logo"
+                 height="36" class="me-2" onerror="this.style.display='none'">
+            Campus Design
+        </a>
+        <button class="navbar-toggler border-0" type="button"
+                data-bs-toggle="collapse" data-bs-target="#navMain">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navMain">
+            <ul class="navbar-nav me-auto ms-3">
+                <li class="nav-item">
+                    <a class="nav-link {% if active_page == 'browse' %}active{% endif %}"
+                       href="{% url 'index' %}">Browse</a>
+                </li>
+                {% if user.is_authenticated and user.role == 'seller' %}
+                <li class="nav-item">
+                    <a class="nav-link {% if active_page == 'seller' %}active{% endif %}"
+                       href="{% url 'seller_dashboard' %}">Seller Hub</a>
+                </li>
+                {% endif %}
+                {% if user.is_authenticated and user.role == 'admin' %}
+                <li class="nav-item">
+                    <a class="nav-link {% if active_page == 'admin' %}active{% endif %}"
+                       href="{% url 'admin_management' %}">Admin Panel</a>
+                </li>
+                {% endif %}
+            </ul>
+            <div class="d-flex align-items-center gap-2">
+                div class="d-flex align-items-center gap-2"
+                {% cart_item_count user as item_count %}
+                <a href="{% url 'cart' %}" class="btn btn-outline-pink btn-sm">
+                    🛒 Cart (<span id="cart-count">{{ item_count }}</span>)
+                </a>
+                {% if user.is_authenticated %}
+                    <span class="text-muted small d-none d-md-inline">
+                        Hi, <strong>{{ user.username }}</strong></span>
+                    <a href="{% url 'logout' %}" class="btn btn-outline-secondary btn-sm">Logout</a>
+                {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-pink btn-sm">Login</a>
+                    <a href="{% url 'register' %}" class="btn btn-outline-pink btn-sm">Register</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</nav>
+
+{% if messages %}
+<div class="container mt-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show small">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<main class="flex-grow">
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="text-center py-4 mt-5">
+    <div class="container">
+        <p class="mb-1 fw-bold" style="color:var(--pink-deep);">
+            <img src="{% static 'images/logo.png' %}" alt="" height="20"
+                 class="me-1" onerror="this.style.display='none'"> Campus Design
+        </p>
+        <p class="text-muted small mb-0">
+            &copy; 2026 Campus Design &mdash; Support campus creativity.
+        </p>
+    </div>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

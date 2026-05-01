@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}Admin Management — Campus Design{% endblock %}
+
+{% block content %}
+<main class="container py-5">
+    <h2 class="fw-bold mb-4">Admin Management Console</h2>
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card-plain p-3 text-center" style="background:var(--orange);">
+                <h6 class="text-uppercase small mb-1" style="color:#666;">Total Users</h6>
+                <p class="fs-3 fw-bold mb-0">{{ total_users }}</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-plain p-3 text-center" style="background:var(--pink);">
+                <h6 class="text-uppercase small mb-1" style="color:#666;">Total Orders</h6>
+                <p class="fs-3 fw-bold mb-0">{{ total_orders }}</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-plain p-3 text-center bg-light">
+                <h6 class="text-uppercase small mb-1" style="color:#666;">Revenue</h6>
+                <p class="fs-3 fw-bold mb-0">RM {{ total_revenue }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-3 mb-3">
+            <div class="list-group shadow-sm" style="border-radius:12px;overflow:hidden;">
+                <a href="?tab=users" class="list-group-item list-group-item-action {% if tab == 'users' %}active{% endif %}"
+                   {% if tab == 'users' %}style="background:var(--pink);border-color:var(--pink);color:#444;font-weight:700;"{% endif %}>
+                    👥 Manage Users</a>
+                <a href="?tab=approvals" class="list-group-item list-group-item-action {% if tab == 'approvals' %}active{% endif %}"
+                   {% if tab == 'approvals' %}style="background:var(--pink);border-color:var(--pink);color:#444;font-weight:700;"{% endif %}>
+                    ✅ Approve Designs
+                    {% if pending_products %}<span class="badge bg-danger float-end">{{ pending_products|length }}</span>{% endif %}</a>
+                <a href="?tab=analytics" class="list-group-item list-group-item-action {% if tab == 'analytics' %}active{% endif %}"
+                   {% if tab == 'analytics' %}style="background:var(--pink);border-color:var(--pink);color:#444;font-weight:700;"{% endif %}>
+                    📊 Analytics</a>
+            </div>
+        </div>
+        <div class="col-md-9">
+            {% if tab == 'users' %}
+            <div class="card-plain p-4">
+                <h5 class="fw-bold">Manage Users</h5>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead class="table-light">
+                            <tr><th>Username</th><th>Email</th><th>Role</th><th>Joined</th><th>Status</th><th>Action</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for u in users %}
+                            <tr>
+                                <td class="fw-semibold">{{ u.username }}</td>
+                                <td class="small">{{ u.email }}</td>
+                                <td><span class="badge bg-light text-dark border small">{{ u.get_role_display }}</span></td>
+                                <td class="small text-muted">{{ u.date_joined|date:"M d, Y" }}</td>
+                                <td>
+                                    {% if u.is_active %}<span class="badge bg-success small">Active</span>
+                                    {% else %}<span class="badge bg-secondary small">Disabled</span>{% endif %}
+                                </td>
+                                <td>
+                                    {% if u.pk != request.user.pk %}
+                                    <form method="post" action="{% url 'toggle_user_active' u.pk %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                                            {% if u.is_active %}Disable{% else %}Activate{% endif %}</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% elif tab == 'approvals' %}
+            <div class="card-plain p-4">
+                <h5 class="fw-bold">Pending Design Approvals</h5>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead class="table-light">
+                            <tr><th></th><th>Designer</th><th>Title</th><th>Price</th><th>Submitted</th><th>Action</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for p in pending_products %}
+                            <tr>
+                                <td>
+                                    {% if p.image %}<img src="{{ p.image.url }}" style="width:45px;height:45px;object-fit:cover;border-radius:6px;">
+                                    {% else %}<div style="width:45px;height:45px;" class="bg-light rounded d-flex align-items-center justify-content-center">👕</div>{% endif %}
+                                </td>
+                                <td>{{ p.seller.get_full_name|default:p.seller.username }}</td>
+                                <td class="fw-semibold">{{ p.title }}</td>
+                                <td>RM {{ p.price }}</td>
+                                <td class="small text-muted">{{ p.created_at|date:"M d, Y" }}</td>
+                                <td>
+                                    <form method="post" action="{% url 'approve_design' p.pk %}" class="d-inline">
+                                        {% csrf_token %}<button class="btn btn-sm btn-success">✓</button>
+                                    </form>
+                                    <form method="post" action="{% url 'reject_design' p.pk %}" class="d-inline">
+                                        {% csrf_token %}<button class="btn btn-sm btn-danger">✕</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="6" class="text-center py-4 text-muted">No pending designs 🎉</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% elif tab == 'analytics' %}
+            <div class="card-plain p-4">
+                <h5 class="fw-bold">All Orders</h5>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead class="table-light">
+                            <tr><th>#</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for o in orders %}
+                            <tr>
+                                <td class="fw-semibold">{{ o.id }}</td>
+                                <td>{{ o.user.username }}</td>
+                                <td>RM {{ o.total_amount }}</td>
+                                <td>
+                                    {% if o.status == 'paid' %}<span class="badge bg-success small">{{ o.get_status_display }}</span>
+                                    {% elif o.status == 'completed' %}<span class="badge bg-primary small">{{ o.get_status_display }}</span>
+                                    {% else %}<span class="badge bg-warning text-dark small">{{ o.get_status_display }}</span>{% endif %}
+                                </td>
+                                <td class="small text-muted">{{ o.created_at|date:"M d, Y H:i" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-center py-4 text-muted">No orders yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</main>
+{% endblock %}
