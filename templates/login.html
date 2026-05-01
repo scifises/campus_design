@@ -29,10 +29,14 @@
                     </div>
                     <button type="submit" class="btn btn-pink w-100 py-2">LOGIN</button>
                 </form>
-                <p class="text-center mt-3 mb-0 small text-muted">
+                <p class="text-center mt-3 mb-1 small text-muted">
+                    <a href="{% url 'password_reset' %}" style="color:var(--pink-deep);font-weight:700;">Forgot password?</a>
+                </p>
+                <p class="text-center mb-0 small text-muted">
                     Don't have an account?
                     <a href="{% url 'register' %}" style="color:var(--pink-deep);font-weight:700;">Register here</a>
                 </p>
+
             </div>
         </div>
     </div>

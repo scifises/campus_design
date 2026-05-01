@@ -77,3 +77,7 @@ AUTH_USER_MODEL = 'shop.User'
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# 开发环境：邮件打印到终端，不需要真实邮箱
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@campusdesign.com'

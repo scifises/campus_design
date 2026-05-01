@@ -112,3 +112,46 @@ class ReviewForm(forms.ModelForm):
                 'placeholder': 'Share your thoughts...'
             }),
         }
+from django.contrib.auth.forms import PasswordChangeForm, PasswordResetForm, SetPasswordForm
+
+
+class CustomPasswordChangeForm(PasswordChangeForm):
+    """已登录用户修改密码"""
+    old_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control', 'placeholder': 'Current password'
+        })
+    )
+    new_password1 = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control', 'placeholder': 'New password'
+        })
+    )
+    new_password2 = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control', 'placeholder': 'Confirm new password'
+        })
+    )
+
+
+class CustomPasswordResetForm(PasswordResetForm):
+    """忘记密码 - 输入邮箱"""
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control', 'placeholder': 'Your registered email'
+        })
+    )
+
+
+class CustomSetPasswordForm(SetPasswordForm):
+    """忘记密码 - 设置新密码"""
+    new_password1 = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control', 'placeholder': 'New password'
+        })
+    )
+    new_password2 = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control', 'placeholder': 'Confirm new password'
+        })
+    )

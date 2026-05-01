@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.db.models import Q, Sum, Count, F
@@ -8,8 +8,10 @@ from decimal import Decimal
 
 from .models import Product, CartItem, Order, OrderItem, User, Review
 from .forms import (
-    RegisterForm, LoginForm, ProductForm, CheckoutForm, ReviewForm
+    RegisterForm, LoginForm, ProductForm, CheckoutForm, ReviewForm,
+    CustomPasswordChangeForm, CustomPasswordResetForm, CustomSetPasswordForm
 )
+
 
 
 def _cart_count(user):
@@ -123,6 +125,95 @@ def logout_view(request):
     logout(request)
     messages.info(request, 'You have been logged out.')
     return redirect('index')
+
+# ── 修改密码 ─────────────────────────────────────────────
+
+@login_required
+def password_change_view(request):
+    if request.method == 'POST':
+        form = CustomPasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)  # 保持登录状态
+            messages.success(request, 'Password changed successfully!')
+            return redirect('index')
+        messages.error(request, 'Please correct the errors below.')
+    else:
+        form = CustomPasswordChangeForm(request.user)
+    return render(request, 'password_change.html', {
+        'form': form,
+        'active_page': 'password',
+    })
+
+
+# ── 忘记密码（发邮件） ────────────────────────────────────
+
+def password_reset_view(request):
+    if request.user.is_authenticated:
+        return redirect('index')
+    if request.method == 'POST':
+        form = CustomPasswordResetForm(request.POST)
+        if form.is_valid():
+            form.save(
+                request=request,
+                use_https=request.is_secure(),
+                from_email=None,
+                email_template_name='emails/password_reset_email.html',
+                subject_template_name='emails/password_reset_subject.txt',
+            )
+            return redirect('password_reset_done')
+    else:
+        form = CustomPasswordResetForm()
+    return render(request, 'password_reset.html', {
+        'form': form,
+        'active_page': 'login',
+    })
+
+
+def password_reset_done_view(request):
+    return render(request, 'password_reset_done.html', {
+        'active_page': 'login',
+    })
+
+
+def password_reset_confirm_view(request, uidb64, token):
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_decode
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user is not None and default_token_generator.check_token(user, token):
+        if request.method == 'POST':
+            form = CustomSetPasswordForm(user, request.POST)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Password reset successfully! Please login.')
+                return redirect('password_reset_complete')
+        else:
+            form = CustomSetPasswordForm(user)
+        return render(request, 'password_reset_confirm.html', {
+            'form': form,
+            'validlink': True,
+            'active_page': 'login',
+        })
+    else:
+        return render(request, 'password_reset_confirm.html', {
+            'validlink': False,
+            'active_page': 'login',
+        })
+
+
+def password_reset_complete_view(request):
+    return render(request, 'password_reset_complete.html', {
+        'active_page': 'login',
+    })
 
 
 @login_required

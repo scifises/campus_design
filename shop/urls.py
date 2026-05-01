@@ -28,4 +28,11 @@ urlpatterns = [
     path('management/approve/<int:pk>/', views.approve_design, name='approve_design'),
     path('management/reject/<int:pk>/',  views.reject_design,  name='reject_design'),
     path('management/toggle-user/<int:pk>/', views.toggle_user_active, name='toggle_user_active'),
+    # 修改密码 + 忘记密码
+    path('password-change/', views.password_change_view, name='password_change'),
+    path('password-reset/', views.password_reset_view, name='password_reset'),
+    path('password-reset/done/', views.password_reset_done_view, name='password_reset_done'),
+    path('password-reset/<uidb64>/<token>/', views.password_reset_confirm_view, name='password_reset_confirm'),
+    path('password-reset/complete/', views.password_reset_complete_view, name='password_reset_complete'),
+
 ]
