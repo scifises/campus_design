@@ -122,16 +122,32 @@
                     <a class="nav-link {% if active_page == 'seller' %}active{% endif %}"
                        href="{% url 'seller_dashboard' %}">Seller Hub</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'design_studio' %}">🎨 Design</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if active_page == 'seller_orders' %}active{% endif %}"
+                       href="{% url 'seller_order_history' %}">📦 Sales</a>
+                </li>
                 {% endif %}
                 {% if user.is_authenticated and user.role == 'admin' %}
                 <li class="nav-item">
                     <a class="nav-link {% if active_page == 'admin' %}active{% endif %}"
                        href="{% url 'admin_management' %}">Admin Panel</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if active_page == 'admin_orders' %}active{% endif %}"
+                       href="{% url 'admin_order_history' %}">📋 All Orders</a>
+                </li>
+                {% endif %}
+                {% if user.is_authenticated %}
+                <li class="nav-item">
+                    <a class="nav-link {% if active_page == 'orders' %}active{% endif %}"
+                       href="{% url 'order_history' %}">My Orders</a>
+                </li>
                 {% endif %}
             </ul>
             <div class="d-flex align-items-center gap-2">
-                div class="d-flex align-items-center gap-2"
                 {% cart_item_count user as item_count %}
                 <a href="{% url 'cart' %}" class="btn btn-outline-pink btn-sm">
                     🛒 Cart (<span id="cart-count">{{ item_count }}</span>)

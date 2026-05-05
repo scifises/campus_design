@@ -326,16 +326,69 @@ def order_success(request, order_id):
         'active_page': 'order',
     })
 
+# ── 订单历史功能 ─────────────────────────────────────────────
+
 @login_required
 def order_history(request):
+    """买家查看自己的历史订单"""
     orders = Order.objects.filter(user=request.user).prefetch_related(
         'items__product', 'items__seller'
     )
+    
+    # 筛选条件
+    status = request.GET.get('status', '').strip()
+    if status:
+        orders = orders.filter(status=status)
+    
+    paginator = Paginator(orders, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    
     return render(request, 'order_history.html', {
-        'orders': orders,
+        'orders': page_obj,
+        'page_obj': page_obj,
+        'status': status,
+        'status_choices': Order.STATUS_CHOICES,
         'cart_count': _cart_count(request.user),
         'active_page': 'orders',
     })
+
+
+@login_required
+def order_detail(request, order_id):
+    """订单详情 - 买家只能看自己的，卖家可以看包含自己商品的，管理员可以看所有"""
+    user = request.user
+    
+    if user.role == 'admin':
+        order = get_object_or_404(
+            Order.objects.prefetch_related('items__product', 'items__seller', 'user'),
+            pk=order_id
+        )
+    elif user.role == 'seller':
+        # 卖家只能看包含自己商品的订单
+        order = get_object_or_404(
+            Order.objects.filter(items__seller=user).distinct()
+                .prefetch_related('items__product', 'items__seller', 'user'),
+            pk=order_id
+        )
+    else:
+        # 买家只能看自己的订单
+        order = get_object_or_404(
+            Order.objects.prefetch_related('items__product', 'items__seller'),
+            pk=order_id, user=user
+        )
+    
+    context = {
+        'order': order,
+        'cart_count': _cart_count(request.user),
+        'active_page': 'orders',
+    }
+    
+    if user.role == 'seller':
+        seller_items = order.items.filter(seller=user)
+        context['seller_items'] = seller_items
+        context['seller_total'] = sum(item.subtotal for item in seller_items)
+    
+    return render(request, 'order_detail.html', context)
 
 
 @login_required
@@ -378,6 +431,58 @@ def seller_dashboard(request):
         'products': products,
         'total_earnings': total_earnings,
         'items_sold': items_sold,
+        'active_page': 'seller',
+    })
+
+
+@login_required
+@user_passes_test(_is_seller, login_url='/')
+def design_studio(request):
+    """设计工作室 - 画板功能"""
+    return render(request, 'seller/design_studio.html', {
+        'active_page': 'seller',
+    })
+
+
+@login_required
+@user_passes_test(_is_seller, login_url='/')
+def seller_order_history(request):
+    """卖家查看自己的销售记录"""
+    # 获取包含该卖家商品的订单
+    order_items = OrderItem.objects.filter(
+        seller=request.user
+    ).select_related(
+        'order', 'product', 'order__user'
+    ).order_by('-order__created_at')
+    
+    # 筛选条件
+    status = request.GET.get('status', '').strip()
+    if status:
+        order_items = order_items.filter(order__status=status)
+    
+    # 按订单分组
+    orders_data = {}
+    for item in order_items:
+        order = item.order
+        if order.id not in orders_data:
+            orders_data[order.id] = {
+                'order': order,
+                'items': [],
+                'seller_total': 0
+            }
+        orders_data[order.id]['items'].append(item)
+        orders_data[order.id]['seller_total'] += item.subtotal
+    
+    orders_list = list(orders_data.values())
+    
+    paginator = Paginator(orders_list, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    
+    return render(request, 'seller/order_history.html', {
+        'orders_data': page_obj,
+        'page_obj': page_obj,
+        'status': status,
+        'status_choices': Order.STATUS_CHOICES,
         'active_page': 'seller',
     })
 
@@ -452,19 +557,154 @@ def _is_admin(u):
 @login_required
 @user_passes_test(_is_admin, login_url='/')
 def admin_management(request):
-    tab = request.GET.get('tab', 'users')
-    return render(request, 'admin_panel/management.html', {
-        'users': User.objects.all().order_by('-date_joined'),
-        'pending_products': Product.objects.filter(
-            status='pending').select_related('seller'),
-        'all_products': Product.objects.all().select_related('seller'),
-        'orders': Order.objects.all().select_related('user'),
+    """管理员管理面板 - 全面的数据管理"""
+    tab = request.GET.get('tab', 'dashboard')
+    search = request.GET.get('search', '').strip()
+    
+    # 基础统计数据
+    total_users = User.objects.count()
+    buyer_count = User.objects.filter(role='buyer').count()
+    seller_count = User.objects.filter(role='seller').count()
+    total_products = Product.objects.count()
+    approved_count = Product.objects.filter(status='approved').count()
+    pending_count = Product.objects.filter(status='pending').count()
+    total_orders = Order.objects.count()
+    completed_orders = Order.objects.filter(status='completed').count()
+    total_revenue = Order.objects.filter(
+        status__in=['paid', 'completed']
+    ).aggregate(t=Sum('total_amount'))['t'] or 0
+    
+    context = {
         'tab': tab,
-        'total_users': User.objects.count(),
-        'total_orders': Order.objects.count(),
-        'total_revenue': Order.objects.filter(
-            status__in=['paid', 'completed']
-        ).aggregate(t=Sum('total_amount'))['t'] or 0,
+        'search': search,
+        'total_users': total_users,
+        'buyer_count': buyer_count,
+        'seller_count': seller_count,
+        'total_products': total_products,
+        'approved_count': approved_count,
+        'pending_count': pending_count,
+        'total_orders': total_orders,
+        'completed_orders': completed_orders,
+        'total_revenue': total_revenue,
+        'active_page': 'admin',
+    }
+    
+    if tab == 'dashboard':
+        context['recent_users'] = User.objects.all().order_by('-date_joined')[:5]
+        context['recent_orders'] = Order.objects.all().select_related('user')[:5]
+    
+    elif tab == 'users':
+        users = User.objects.all().order_by('-date_joined')
+        role_filter = request.GET.get('role', '')
+        if search:
+            users = users.filter(
+                Q(username__icontains=search) |
+                Q(email__icontains=search) |
+                Q(student_id__icontains=search)
+            )
+        if role_filter:
+            users = users.filter(role=role_filter)
+        
+        paginator = Paginator(users, 20)
+        context['users'] = paginator.get_page(request.GET.get('page'))
+        context['role_filter'] = role_filter
+    
+    elif tab == 'buyers':
+        buyers = User.objects.filter(role='buyer').order_by('-date_joined')
+        if search:
+            buyers = buyers.filter(
+                Q(username__icontains=search) |
+                Q(email__icontains=search)
+            )
+        paginator = Paginator(buyers, 20)
+        context['buyers'] = paginator.get_page(request.GET.get('page'))
+    
+    elif tab == 'sellers':
+        sellers = User.objects.filter(role='seller').order_by('-date_joined')
+        if search:
+            sellers = sellers.filter(
+                Q(username__icontains=search) |
+                Q(email__icontains=search)
+            )
+        paginator = Paginator(sellers, 20)
+        context['sellers'] = paginator.get_page(request.GET.get('page'))
+    
+    elif tab == 'products':
+        products = Product.objects.all().select_related('seller').order_by('-created_at')
+        status_filter = request.GET.get('status', '')
+        category_filter = request.GET.get('category', '')
+        
+        if search:
+            products = products.filter(
+                Q(title__icontains=search) |
+                Q(seller__username__icontains=search)
+            )
+        if status_filter:
+            products = products.filter(status=status_filter)
+        if category_filter:
+            products = products.filter(category=category_filter)
+        
+        paginator = Paginator(products, 20)
+        context['products'] = paginator.get_page(request.GET.get('page'))
+        context['status_filter'] = status_filter
+        context['category_filter'] = category_filter
+    
+    elif tab == 'orders':
+        orders = Order.objects.all().select_related('user').prefetch_related('items').order_by('-created_at')[:50]
+        context['orders'] = orders
+    
+    elif tab == 'reviews':
+        reviews = Review.objects.all().select_related('user', 'product').order_by('-created_at')
+        paginator = Paginator(reviews, 20)
+        context['reviews'] = paginator.get_page(request.GET.get('page'))
+    
+    # 旧版 tab 支持
+    elif tab == 'approvals':
+        context['pending_products'] = Product.objects.filter(
+            status='pending').select_related('seller')
+    
+    return render(request, 'admin_panel/management.html', context)
+
+
+@login_required
+@user_passes_test(_is_admin, login_url='/')
+def admin_order_history(request):
+    """管理员查看所有历史订单"""
+    orders = Order.objects.all().select_related('user').prefetch_related(
+        'items__product', 'items__seller'
+    ).order_by('-created_at')
+    
+    # 筛选条件
+    status = request.GET.get('status', '').strip()
+    if status:
+        orders = orders.filter(status=status)
+    
+    # 搜索
+    search = request.GET.get('search', '').strip()
+    if search:
+        orders = orders.filter(
+            Q(id__icontains=search) |
+            Q(user__username__icontains=search) |
+            Q(full_name__icontains=search)
+        )
+    
+    paginator = Paginator(orders, 15)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    
+    # 统计数据
+    total_orders = Order.objects.count()
+    total_revenue = Order.objects.filter(
+        status__in=['paid', 'completed']
+    ).aggregate(t=Sum('total_amount'))['t'] or 0
+    
+    return render(request, 'admin_panel/order_history.html', {
+        'orders': page_obj,
+        'page_obj': page_obj,
+        'status': status,
+        'search': search,
+        'status_choices': Order.STATUS_CHOICES,
+        'total_orders': total_orders,
+        'total_revenue': total_revenue,
         'active_page': 'admin',
     })
 
@@ -500,4 +740,4 @@ def toggle_user_active(request, pk):
         u.save()
         w = 'activated' if u.is_active else 'deactivated'
         messages.info(request, f'User "{u.username}" {w}.')
-    return redirect('admin_management')
+    return redirect(request.META.get('HTTP_REFERER', 'admin_management'))

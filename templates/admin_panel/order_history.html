@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% block title %}Order Management — Campus Design{% endblock %}
+
+{% block content %}
+<div class="container mt-4 pb-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">📋 All Orders</h2>
+        <div class="d-flex gap-2">
+            <a href="{% url 'admin_management' %}" class="btn btn-outline-pink btn-sm">
+                ← Back to Admin Panel
+            </a>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card-plain p-3 text-center" style="background:var(--orange);">
+                <h6 class="text-uppercase small mb-1" style="color:#666;">Total Orders</h6>
+                <p class="fs-3 fw-bold mb-0">{{ total_orders }}</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-plain p-3 text-center" style="background:var(--pink);">
+                <h6 class="text-uppercase small mb-1" style="color:#666;">Total Revenue</h6>
+                <p class="fs-3 fw-bold mb-0">RM {{ total_revenue }}</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-plain p-3 text-center bg-light">
+                <h6 class="text-uppercase small mb-1" style="color:#666;">Current Page</h6>
+                <p class="fs-3 fw-bold mb-0">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 搜索和筛选栏 -->
+    <div class="card-plain p-3 mb-4" style="background:#FAFAFA;">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <input type="text" name="search" class="form-control form-control-sm" 
+                       placeholder="Search by Order ID, username, or recipient..." 
+                       value="{{ search }}">
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All Status</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-pink btn-sm">Search</button>
+            </div>
+            <div class="col-auto">
+                <a href="{% url 'admin_order_history' %}" class="btn btn-outline-secondary btn-sm">Clear</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- 订单列表 -->
+    <div class="card-plain p-4" style="background:#FAFAFA;">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Customer</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td class="fw-bold">#{{ order.id }}</td>
+                        <td>
+                            <div class="fw-semibold">{{ order.user.username }}</div>
+                            <div class="small text-muted">{{ order.full_name }}</div>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border">{{ order.items.count }} items</span>
+                        </td>
+                        <td class="fw-bold" style="color:var(--pink-deep);">RM {{ order.total_amount }}</td>
+                        <td>
+                            {% if order.status == 'paid' %}
+                            <span class="badge bg-success">{{ order.get_status_display }}</span>
+                            {% elif order.status == 'shipped' %}
+                            <span class="badge bg-info">{{ order.get_status_display }}</span>
+                            {% elif order.status == 'completed' %}
+                            <span class="badge bg-primary">{{ order.get_status_display }}</span>
+                            {% elif order.status == 'cancelled' %}
+                            <span class="badge bg-danger">{{ order.get_status_display }}</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">{{ order.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="small text-muted">{{ order.created_at|date:"M d, Y" }}<br>{{ order.created_at|date:"H:i" }}</td>
+                        <td>
+                            <a href="{% url 'order_detail' order.id %}" class="btn btn-outline-pink btn-sm">
+                                View
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="display-1 mb-2">📦</div>
+                            <p class="text-muted mb-0">No orders found</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 分页 -->
+    {% if page_obj.has_other_pages %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status %}&status={{ status }}{% endif %}{% if search %}&search={{ search }}{% endif %}">Previous</a>
+            </li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}{% if status %}&status={{ status }}{% endif %}{% if search %}&search={{ search }}{% endif %}">{{ num }}</a>
+                </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status %}&status={{ status }}{% endif %}{% if search %}&search={{ search }}{% endif %}">Next</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

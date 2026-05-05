@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% block title %}Sales History — Campus Design{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <nav class="col-md-2 d-none d-md-block sidebar-nav p-0 pt-4">
+            <h5 class="px-4 mb-4 fw-bold">Designer Hub</h5>
+            <a href="{% url 'seller_dashboard' %}">📊 Dashboard</a>
+            <a href="{% url 'design_studio' %}">🎨 Design Studio</a>
+            <a href="{% url 'upload_design' %}">📤 Upload Design</a>
+            <a href="{% url 'seller_inventory' %}">📦 My Inventory</a>
+            <a href="{% url 'seller_order_history' %}" class="active">💰 Sales History</a>
+        </nav>
+        <main class="col-md-10 px-md-5 py-5">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold mb-0">📦 Sales History</h2>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'design_studio' %}" class="btn btn-pink">🎨 Create New Design</a>
+                    <a href="{% url 'seller_dashboard' %}" class="btn btn-outline-secondary">← Back to Dashboard</a>
+                </div>
+            </div>
+
+            <!-- 统计卡片 -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card-plain p-3 text-center" style="background:var(--orange);">
+                        <h6 class="text-uppercase small mb-1" style="color:#666;">Total Sales</h6>
+                        <p class="fs-3 fw-bold mb-0">{{ page_obj.paginator.count }}</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card-plain p-3 text-center" style="background:var(--pink);">
+                        <h6 class="text-uppercase small mb-1" style="color:#666;">Orders This Page</h6>
+                        <p class="fs-3 fw-bold mb-0">{{ page_obj|length }}</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card-plain p-3 text-center bg-light">
+                        <h6 class="text-uppercase small mb-1" style="color:#666;">Filter</h6>
+                        <p class="fs-6 fw-bold mb-0">{% if status %}{{ status|title }}{% else %}All{% endif %}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 筛选栏 -->
+            <div class="card-plain p-3 mb-4" style="background:#FAFAFA;">
+                <form method="get" class="row g-2 align-items-center">
+                    <div class="col-auto">
+                        <label class="small text-muted">Filter by status:</label>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">All Orders</option>
+                            {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 订单列表 -->
+            {% for data in orders_data %}
+            <div class="card-plain mb-4 p-4" style="background:#FAFAFA; border:2px solid var(--orange)!important; border-radius:12px;">
+                <!-- 订单头部 -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="fw-bold mb-1">
+                            <a href="{% url 'order_detail' data.order.id %}" class="text-decoration-none" style="color:var(--txt);">
+                                Order #{{ data.order.id }}
+                            </a>
+                        </h5>
+                        <span class="text-muted small">{{ data.order.created_at|date:"M d, Y H:i" }}</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        {% if data.order.status == 'paid' %}
+                        <span class="badge bg-success">Paid</span>
+                        {% elif data.order.status == 'shipped' %}
+                        <span class="badge bg-info">Shipped</span>
+                        {% elif data.order.status == 'completed' %}
+                        <span class="badge bg-primary">Completed</span>
+                        {% elif data.order.status == 'cancelled' %}
+                        <span class="badge bg-danger">Cancelled</span>
+                        {% else %}
+                        <span class="badge bg-warning text-dark">Pending</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 买家信息 -->
+                <div class="row small mb-3">
+                    <div class="col-md-6">
+                        <strong class="text-muted">Buyer:</strong> {{ data.order.user.username }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong class="text-muted">Recipient:</strong> {{ data.order.full_name }}
+                    </div>
+                </div>
+
+                <!-- 商品明细 -->
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Product</th>
+                                <th>Size</th>
+                                <th>Qty</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in data.items %}
+                            <tr>
+                                <td class="fw-semibold">
+                                    <a href="{% url 'product_detail' item.product.pk %}" class="text-decoration-none" style="color:var(--txt);">
+                                        {{ item.product.title }}
+                                    </a>
+                                </td>
+                                <td>{{ item.size }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td class="text-end fw-bold">RM {{ item.subtotal }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <td colspan="3" class="text-end fw-bold">Your Earnings:</td>
+                                <td class="text-end fw-bold" style="color:var(--pink-deep);font-size:1rem;">
+                                    RM {{ data.seller_total }}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="d-flex gap-2">
+                    <a href="{% url 'order_detail' data.order.id %}" class="btn btn-pink btn-sm">
+                        View Details
+                    </a>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-5">
+                <div class="display-1 mb-3">📦</div>
+                <h4 class="fw-bold">No sales yet</h4>
+                <p class="text-muted mb-4">You haven't received any orders. Keep creating amazing designs!</p>
+                <a href="{% url 'design_studio' %}" class="btn btn-pink px-5">Create Your First Design</a>
+            </div>
+            {% endfor %}
+
+            <!-- 分页 -->
+            {% if page_obj.has_other_pages %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status %}&status={{ status }}{% endif %}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if status %}&status={{ status }}{% endif %}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status %}&status={{ status }}{% endif %}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </main>
+    </div>
+</div>
+{% endblock %}

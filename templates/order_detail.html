@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+{% block title %}Order #{{ order.id }} — Campus Design{% endblock %}
+
+{% block content %}
+<div class="container mt-4 pb-5">
+    <!-- 返回按钮 -->
+    <div class="mb-4">
+        {% if request.user.role == 'admin' %}
+        <a href="{% url 'admin_order_history' %}" class="btn btn-outline-pink btn-sm">
+            ← Back to All Orders
+        </a>
+        {% elif request.user.role == 'seller' %}
+        <a href="{% url 'seller_order_history' %}" class="btn btn-outline-pink btn-sm">
+            ← Back to Sales History
+        </a>
+        {% else %}
+        <a href="{% url 'order_history' %}" class="btn btn-outline-pink btn-sm">
+            ← Back to My Orders
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- 订单标题 -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Order #{{ order.id }}</h2>
+            <span class="text-muted">{{ order.created_at|date:"M d, Y H:i" }}</span>
+        </div>
+        <div>
+            {% if order.status == 'paid' %}
+            <span class="badge bg-success fs-6">Paid</span>
+            {% elif order.status == 'shipped' %}
+            <span class="badge bg-info fs-6">Shipped</span>
+            {% elif order.status == 'completed' %}
+            <span class="badge bg-primary fs-6">Completed</span>
+            {% elif order.status == 'cancelled' %}
+            <span class="badge bg-danger fs-6">Cancelled</span>
+            {% else %}
+            <span class="badge bg-warning text-dark fs-6">Pending</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- 左侧：订单信息 -->
+        <div class="col-lg-8">
+            <!-- 商品明细 -->
+            <div class="card-plain p-4 mb-4" style="background:#FAFAFA; border:2px solid var(--orange)!important; border-radius:12px;">
+                <h5 class="fw-bold mb-3">Order Items</h5>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Product</th>
+                                <th>Designer</th>
+                                <th>Size</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if seller_items %}
+                                {% for item in seller_items %}
+                                <tr>
+                                    <td class="fw-semibold">
+                                        <a href="{% url 'product_detail' item.product.pk %}" class="text-decoration-none" style="color:var(--txt);">
+                                            {{ item.product.title }}
+                                        </a>
+                                    </td>
+                                    <td class="text-muted small">{{ item.seller.get_full_name|default:item.seller.username }}</td>
+                                    <td>{{ item.size }}</td>
+                                    <td>{{ item.quantity }}</td>
+                                    <td>RM {{ item.price }}</td>
+                                    <td class="text-end fw-bold">RM {{ item.subtotal }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                {% for item in order.items.all %}
+                                <tr>
+                                    <td class="fw-semibold">
+                                        <a href="{% url 'product_detail' item.product.pk %}" class="text-decoration-none" style="color:var(--txt);">
+                                            {{ item.product.title }}
+                                        </a>
+                                    </td>
+                                    <td class="text-muted small">{{ item.seller.get_full_name|default:item.seller.username }}</td>
+                                    <td>{{ item.size }}</td>
+                                    <td>{{ item.quantity }}</td>
+                                    <td>RM {{ item.price }}</td>
+                                    <td class="text-end fw-bold">RM {{ item.subtotal }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% endif %}
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <td colspan="5" class="text-end fw-bold">
+                                    {% if seller_items %}Your Earnings:{% else %}Total:{% endif %}
+                                </td>
+                                <td class="text-end fw-bold" style="color:var(--pink-deep);font-size:1.1rem;">
+                                    {% if seller_items %}RM {{ seller_total }}{% else %}RM {{ order.total_amount }}{% endif %}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 收货信息 -->
+            <div class="card-plain p-4" style="background:#FAFAFA;">
+                <h5 class="fw-bold mb-3">Shipping Information</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="p-3 rounded" style="background:#fff;">
+                            <strong class="text-muted d-block small">Recipient</strong>
+                            <span class="fw-semibold">{{ order.full_name }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 rounded" style="background:#fff;">
+                            <strong class="text-muted d-block small">Email</strong>
+                            <span class="fw-semibold">{{ order.email }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 rounded" style="background:#fff;">
+                            <strong class="text-muted d-block small">Phone</strong>
+                            <span class="fw-semibold">{{ order.phone|default:"—" }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 rounded" style="background:#fff;">
+                            <strong class="text-muted d-block small">Order Date</strong>
+                            <span class="fw-semibold">{{ order.created_at|date:"M d, Y H:i" }}</span>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="p-3 rounded" style="background:#fff;">
+                            <strong class="text-muted d-block small">Address</strong>
+                            <span class="fw-semibold">{{ order.address }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：订单摘要 -->
+        <div class="col-lg-4">
+            <div class="card-plain p-4" style="background:#FAFAFA; border:2px solid var(--pink)!important; border-radius:12px;">
+                <h5 class="fw-bold mb-3">Order Summary</h5>
+                
+                {% if request.user.role == 'admin' %}
+                <!-- 管理员可见：买家信息 -->
+                <div class="mb-3 p-3 rounded" style="background:#fff;">
+                    <strong class="text-muted d-block small">Customer</strong>
+                    <span class="fw-semibold">{{ order.user.username }}</span>
+                    <span class="badge bg-light text-dark border small ms-2">{{ order.user.get_role_display }}</span>
+                </div>
+                {% endif %}
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Status:</span>
+                    <span>
+                        {% if order.status == 'paid' %}
+                        <span class="badge bg-success">Paid</span>
+                        {% elif order.status == 'shipped' %}
+                        <span class="badge bg-info">Shipped</span>
+                        {% elif order.status == 'completed' %}
+                        <span class="badge bg-primary">Completed</span>
+                        {% elif order.status == 'cancelled' %}
+                        <span class="badge bg-danger">Cancelled</span>
+                        {% else %}
+                        <span class="badge bg-warning text-dark">Pending</span>
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Items:</span>
+                    <span class="fw-semibold">
+                        {% if seller_items %}{{ seller_items|length }}{% else %}{{ order.items.count }}{% endif %}
+                    </span>
+                </div>
+                
+                <hr>
+                
+                <div class="d-flex justify-content-between">
+                    <span class="fw-bold">Total:</span>
+                    <span class="fw-bold" style="color:var(--pink-deep);font-size:1.2rem;">
+                        {% if seller_items %}RM {{ seller_total }}{% else %}RM {{ order.total_amount }}{% endif %}
+                    </span>
+                </div>
+            </div>
+            
+            {% if request.user.role == 'seller' %}
+            <div class="card-plain p-4 mt-4" style="background:#FFF9E6;">
+                <h6 class="fw-bold mb-2">💡 Seller Note</h6>
+                <p class="small mb-0 text-muted">
+                    This shows only the items you sold in this order. The buyer may have purchased additional items from other sellers.
+                </p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

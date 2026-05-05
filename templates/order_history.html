@@ -3,14 +3,43 @@
 
 {% block content %}
 <div class="container mt-4 pb-5">
-    <h2 class="fw-bold mb-4">My Orders</h2>
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">My Orders</h2>
+        <div class="d-flex gap-2">
+            <a href="{% url 'index' %}" class="btn btn-outline-pink btn-sm">
+                ← Continue Shopping
+            </a>
+        </div>
+    </div>
 
+    <!-- 筛选栏 -->
+    <div class="card-plain p-3 mb-4" style="background:#FAFAFA;">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-auto">
+                <label class="small text-muted">Filter by status:</label>
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Orders</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+
+    <!-- 订单列表 -->
     {% for order in orders %}
     <div class="card-plain mb-4 p-4" style="background:#FAFAFA; border:2px solid var(--orange)!important; border-radius:12px;">
         <!-- 订单头部 -->
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
             <div>
-                <h5 class="fw-bold mb-1">Order #{{ order.id }}</h5>
+                <h5 class="fw-bold mb-1">
+                    <a href="{% url 'order_detail' order.id %}" class="text-decoration-none" style="color:var(--txt);">
+                        Order #{{ order.id }}
+                    </a>
+                </h5>
                 <span class="text-muted small">{{ order.created_at|date:"M d, Y H:i" }}</span>
             </div>
             <div class="d-flex align-items-center gap-2">
@@ -31,59 +60,21 @@
             </div>
         </div>
 
-        <!-- 收货信息 -->
-        <div class="mb-3 p-3 rounded" style="background:#fff;">
-            <div class="row small">
-                <div class="col-md-4">
-                    <strong class="text-muted">Recipient</strong><br>
-                    {{ order.full_name }}
-                </div>
-                <div class="col-md-4">
-                    <strong class="text-muted">Email</strong><br>
-                    {{ order.email }}
-                </div>
-                <div class="col-md-4">
-                    <strong class="text-muted">Phone</strong><br>
-                    {{ order.phone|default:"—" }}
-                </div>
+        <!-- 商品摘要 -->
+        <div class="row small mb-3">
+            <div class="col-md-6">
+                <strong class="text-muted">Items:</strong> {{ order.items.count }} product(s)
             </div>
-            <div class="small mt-2">
-                <strong class="text-muted">Address</strong><br>
-                {{ order.address }}
+            <div class="col-md-6">
+                <strong class="text-muted">Recipient:</strong> {{ order.full_name }}
             </div>
         </div>
 
-        <!-- 商品明细 -->
-        <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Product</th>
-                        <th>Designer</th>
-                        <th>Size</th>
-                        <th>Qty</th>
-                        <th class="text-end">Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in order.items.all %}
-                    <tr>
-                        <td class="fw-semibold">
-                            <a href="{% url 'product_detail' item.product.pk %}"
-                               class="text-decoration-none" style="color:var(--txt);">
-                                {{ item.product.title }}
-                            </a>
-                        </td>
-                        <td class="text-muted small">
-                            {{ item.seller.get_full_name|default:item.seller.username }}
-                        </td>
-                        <td>{{ item.size }}</td>
-                        <td>{{ item.quantity }}</td>
-                        <td class="text-end fw-bold">RM {{ item.subtotal }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <!-- 操作按钮 -->
+        <div class="d-flex gap-2">
+            <a href="{% url 'order_detail' order.id %}" class="btn btn-pink btn-sm">
+                View Details
+            </a>
         </div>
     </div>
     {% empty %}
@@ -94,5 +85,34 @@
         <a href="{% url 'index' %}" class="btn btn-pink px-5">Browse Designs</a>
     </div>
     {% endfor %}
+
+    <!-- 分页 -->
+    {% if page_obj.has_other_pages %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status %}&status={{ status }}{% endif %}">Previous</a>
+            </li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}{% if status %}&status={{ status }}{% endif %}">{{ num }}</a>
+                </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status %}&status={{ status }}{% endif %}">Next</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
 </div>
 {% endblock %}

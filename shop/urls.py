@@ -16,18 +16,25 @@ urlpatterns = [
     path('cart/remove/<int:item_id>/',  views.remove_from_cart, name='remove_from_cart'),
     path('checkout/',               views.checkout,         name='checkout'),
     path('order/success/<int:order_id>/', views.order_success, name='order_success'),
+    
+    # 订单历史相关路由
     path('orders/', views.order_history, name='order_history'),
+    path('orders/<int:order_id>/detail/', views.order_detail, name='order_detail'),
 
     path('seller/',                 views.seller_dashboard, name='seller_dashboard'),
+    path('seller/design/',          views.design_studio,    name='design_studio'),
     path('seller/upload/',          views.upload_design,    name='upload_design'),
     path('seller/inventory/',       views.seller_inventory, name='seller_inventory'),
     path('seller/edit/<int:pk>/',   views.edit_design,      name='edit_design'),
     path('seller/unpublish/<int:pk>/', views.unpublish_design, name='unpublish_design'),
+    path('seller/orders/',          views.seller_order_history, name='seller_order_history'),
 
     path('management/',             views.admin_management, name='admin_management'),
+    path('management/orders/',      views.admin_order_history, name='admin_order_history'),
     path('management/approve/<int:pk>/', views.approve_design, name='approve_design'),
     path('management/reject/<int:pk>/',  views.reject_design,  name='reject_design'),
     path('management/toggle-user/<int:pk>/', views.toggle_user_active, name='toggle_user_active'),
+    
     # 修改密码 + 忘记密码
     path('password-change/', views.password_change_view, name='password_change'),
     path('password-reset/', views.password_reset_view, name='password_reset'),

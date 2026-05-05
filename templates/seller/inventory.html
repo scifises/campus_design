@@ -7,11 +7,19 @@
         <nav class="col-md-2 d-none d-md-block sidebar-nav p-0 pt-4">
             <h5 class="px-4 mb-4 fw-bold">Designer Hub</h5>
             <a href="{% url 'seller_dashboard' %}">📊 Dashboard</a>
+            <a href="{% url 'design_studio' %}">🎨 Design Studio</a>
             <a href="{% url 'upload_design' %}">📤 Upload Design</a>
             <a href="{% url 'seller_inventory' %}" class="active">📦 My Inventory</a>
+            <a href="{% url 'seller_order_history' %}">💰 Sales History</a>
         </nav>
         <main class="col-md-10 px-md-5 py-5">
-            <h1 class="h2 fw-bold mb-4">My Inventory</h1>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2 fw-bold mb-0">My Inventory</h1>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'design_studio' %}" class="btn btn-pink">🎨 Create New Design</a>
+                    <a href="{% url 'seller_order_history' %}" class="btn btn-outline-pink">📦 View Sales History</a>
+                </div>
+            </div>
             <div class="table-responsive bg-white rounded shadow-sm p-3">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
@@ -49,7 +57,7 @@
                         {% empty %}
                         <tr><td colspan="6" class="text-center py-5 text-muted">
                             <p class="mb-2">No designs yet.</p>
-                            <a href="{% url 'upload_design' %}" class="btn btn-pink btn-sm">Upload First Design</a>
+                            <a href="{% url 'design_studio' %}" class="btn btn-pink btn-sm">Create Your First Design</a>
                         </td></tr>
                         {% endfor %}
                     </tbody>

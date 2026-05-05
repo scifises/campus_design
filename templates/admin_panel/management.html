@@ -2,58 +2,194 @@
 {% block title %}Admin Management — Campus Design{% endblock %}
 
 {% block content %}
-<main class="container py-5">
-    <h2 class="fw-bold mb-4">Admin Management Console</h2>
-    <div class="row g-4 mb-4">
-        <div class="col-md-4">
-            <div class="card-plain p-3 text-center" style="background:var(--orange);">
-                <h6 class="text-uppercase small mb-1" style="color:#666;">Total Users</h6>
-                <p class="fs-3 fw-bold mb-0">{{ total_users }}</p>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card-plain p-3 text-center" style="background:var(--pink);">
-                <h6 class="text-uppercase small mb-1" style="color:#666;">Total Orders</h6>
-                <p class="fs-3 fw-bold mb-0">{{ total_orders }}</p>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card-plain p-3 text-center bg-light">
-                <h6 class="text-uppercase small mb-1" style="color:#666;">Revenue</h6>
-                <p class="fs-3 fw-bold mb-0">RM {{ total_revenue }}</p>
-            </div>
-        </div>
-    </div>
+<main class="container-fluid py-4">
     <div class="row">
-        <div class="col-md-3 mb-3">
+        <!-- 侧边栏 -->
+        <div class="col-md-2 mb-4">
             <div class="list-group shadow-sm" style="border-radius:12px;overflow:hidden;">
+                <a href="?tab=dashboard" class="list-group-item list-group-item-action {% if tab == 'dashboard' %}active{% endif %}"
+                   style="{% if tab == 'dashboard' %}background:var(--pink);border-color:var(--pink);color:#444;font-weight:700;{% endif %}">
+                    📊 Dashboard</a>
                 <a href="?tab=users" class="list-group-item list-group-item-action {% if tab == 'users' %}active{% endif %}"
-                   {% if tab == 'users' %}style="background:var(--pink);border-color:var(--pink);color:#444;font-weight:700;"{% endif %}>
-                    👥 Manage Users</a>
-                <a href="?tab=approvals" class="list-group-item list-group-item-action {% if tab == 'approvals' %}active{% endif %}"
-                   {% if tab == 'approvals' %}style="background:var(--pink);border-color:var(--pink);color:#444;font-weight:700;"{% endif %}>
-                    ✅ Approve Designs
-                    {% if pending_products %}<span class="badge bg-danger float-end">{{ pending_products|length }}</span>{% endif %}</a>
-                <a href="?tab=analytics" class="list-group-item list-group-item-action {% if tab == 'analytics' %}active{% endif %}"
-                   {% if tab == 'analytics' %}style="background:var(--pink);border-color:var(--pink);color:#444;font-weight:700;"{% endif %}>
-                    📊 Analytics</a>
+                   style="{% if tab == 'users' %}background:var(--pink);border-color:var(--pink);color:#444;font-weight:700;{% endif %}">
+                    👥 Users {% if total_users %}<span class="badge bg-secondary float-end">{{ total_users }}</span>{% endif %}</a>
+                <a href="?tab=buyers" class="list-group-item list-group-item-action {% if tab == 'buyers' %}active{% endif %}"
+                   style="{% if tab == 'buyers' %}background:var(--pink);border-color:var(--pink);color:#444;font-weight:700;{% endif %}">
+                    🛒 Buyers</a>
+                <a href="?tab=sellers" class="list-group-item list-group-item-action {% if tab == 'sellers' %}active{% endif %}"
+                   style="{% if tab == 'sellers' %}background:var(--pink);border-color:var(--pink);color:#444;font-weight:700;{% endif %}">
+                    🎨 Sellers</a>
+                <a href="?tab=products" class="list-group-item list-group-item-action {% if tab == 'products' %}active{% endif %}"
+                   style="{% if tab == 'products' %}background:var(--pink);border-color:var(--pink);color:#444;font-weight:700;{% endif %}">
+                    👕 Products {% if pending_count %}<span class="badge bg-danger float-end">{{ pending_count }}</span>{% endif %}</a>
+                <a href="?tab=orders" class="list-group-item list-group-item-action {% if tab == 'orders' %}active{% endif %}"
+                   style="{% if tab == 'orders' %}background:var(--pink);border-color:var(--pink);color:#444;font-weight:700;{% endif %}">
+                    📦 Orders</a>
+                <a href="?tab=reviews" class="list-group-item list-group-item-action {% if tab == 'reviews' %}active{% endif %}"
+                   style="{% if tab == 'reviews' %}background:var(--pink);border-color:var(--pink);color:#444;font-weight:700;{% endif %}">
+                    ⭐ Reviews</a>
+                <a href="{% url 'admin_order_history' %}" class="list-group-item list-group-item-action">
+                    📋 Full Order History</a>
+                <a href="/admin/" class="list-group-item list-group-item-action" target="_blank">
+                    ⚙️ Django Admin</a>
             </div>
         </div>
-        <div class="col-md-9">
-            {% if tab == 'users' %}
-            <div class="card-plain p-4">
-                <h5 class="fw-bold">Manage Users</h5>
+
+        <!-- 主内容区 -->
+        <div class="col-md-10">
+            <!-- Dashboard -->
+            {% if tab == 'dashboard' %}
+            <h2 class="fw-bold mb-4">📊 Admin Dashboard</h2>
+            
+            <!-- 统计卡片 -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-3">
+                    <div class="card-plain p-4 text-center" style="background:var(--orange);">
+                        <h6 class="text-uppercase small mb-1" style="color:#666;">Total Users</h6>
+                        <p class="fs-2 fw-bold mb-0">{{ total_users }}</p>
+                        <small class="text-muted">{{ buyer_count }} Buyers · {{ seller_count }} Sellers</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card-plain p-4 text-center" style="background:var(--pink);">
+                        <h6 class="text-uppercase small mb-1" style="color:#666;">Total Products</h6>
+                        <p class="fs-2 fw-bold mb-0">{{ total_products }}</p>
+                        <small class="text-muted">{{ approved_count }} Approved · {{ pending_count }} Pending</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card-plain p-4 text-center" style="background:#E8F5E9;">
+                        <h6 class="text-uppercase small mb-1" style="color:#666;">Total Orders</h6>
+                        <p class="fs-2 fw-bold mb-0">{{ total_orders }}</p>
+                        <small class="text-muted">{{ completed_orders }} Completed</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card-plain p-4 text-center bg-light">
+                        <h6 class="text-uppercase small mb-1" style="color:#666;">Total Revenue</h6>
+                        <p class="fs-2 fw-bold mb-0">RM {{ total_revenue }}</p>
+                        <small class="text-muted">From completed orders</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快速操作 -->
+            <div class="card-plain p-4 mb-4" style="background:#FAFAFA;">
+                <h5 class="fw-bold mb-3">Quick Actions</h5>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="?tab=users" class="btn btn-pink">👥 Manage Users</a>
+                    <a href="?tab=products" class="btn btn-orange">👕 Manage Products</a>
+                    <a href="{% url 'admin_order_history' %}" class="btn btn-outline-pink">📋 View All Orders</a>
+                    <a href="/admin/" class="btn btn-outline-secondary" target="_blank">⚙️ Django Admin</a>
+                </div>
+            </div>
+
+            <!-- 最近活动 -->
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="card-plain p-4" style="background:#FAFAFA;">
+                        <h5 class="fw-bold mb-3">🆕 Recent Users</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead><tr><th>User</th><th>Role</th><th>Joined</th></tr></thead>
+                                <tbody>
+                                    {% for u in recent_users %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ u.username }}</td>
+                                        <td><span class="badge bg-light text-dark border small">{{ u.get_role_display }}</span></td>
+                                        <td class="small text-muted">{{ u.date_joined|date:"M d" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card-plain p-4" style="background:#FAFAFA;">
+                        <h5 class="fw-bold mb-3">📦 Recent Orders</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead><tr><th>Order</th><th>Buyer</th><th>Amount</th><th>Status</th></tr></thead>
+                                <tbody>
+                                    {% for o in recent_orders %}
+                                    <tr>
+                                        <td class="fw-semibold">#{{ o.id }}</td>
+                                        <td>{{ o.user.username }}</td>
+                                        <td>RM {{ o.total_amount }}</td>
+                                        <td>
+                                            {% if o.status == 'paid' %}<span class="badge bg-info small">Paid</span>
+                                            {% elif o.status == 'completed' %}<span class="badge bg-success small">Completed</span>
+                                            {% else %}<span class="badge bg-warning text-dark small">{{ o.get_status_display }}</span>{% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users 管理 -->
+            {% elif tab == 'users' %}
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold mb-0">👥 All Users</h2>
+                <div class="d-flex gap-2">
+                    <a href="?tab=buyers" class="btn btn-outline-info btn-sm">🛒 Buyers</a>
+                    <a href="?tab=sellers" class="btn btn-outline-success btn-sm">🎨 Sellers</a>
+                </div>
+            </div>
+            
+            <!-- 搜索 -->
+            <form method="get" class="mb-4">
+                <input type="hidden" name="tab" value="users">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <input type="text" name="search" class="form-control" placeholder="Search users..." value="{{ search }}">
+                    </div>
+                    <div class="col-md-2">
+                        <select name="role" class="form-select">
+                            <option value="">All Roles</option>
+                            <option value="buyer" {% if role_filter == 'buyer' %}selected{% endif %}>Buyers</option>
+                            <option value="seller" {% if role_filter == 'seller' %}selected{% endif %}>Sellers</option>
+                            <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>Admins</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-pink">Search</button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="card-plain p-4" style="background:#FAFAFA;">
                 <div class="table-responsive">
-                    <table class="table align-middle">
+                    <table class="table align-middle mb-0">
                         <thead class="table-light">
-                            <tr><th>Username</th><th>Email</th><th>Role</th><th>Joined</th><th>Status</th><th>Action</th></tr>
+                            <tr>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Student ID</th>
+                                <th>Phone</th>
+                                <th>Joined</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
                         </thead>
                         <tbody>
                             {% for u in users %}
                             <tr>
                                 <td class="fw-semibold">{{ u.username }}</td>
-                                <td class="small">{{ u.email }}</td>
-                                <td><span class="badge bg-light text-dark border small">{{ u.get_role_display }}</span></td>
+                                <td class="small">{{ u.email|default:"-" }}</td>
+                                <td>
+                                    {% if u.role == 'buyer' %}<span class="badge bg-info">Buyer</span>
+                                    {% elif u.role == 'seller' %}<span class="badge bg-success">Seller</span>
+                                    {% elif u.role == 'admin' %}<span class="badge bg-danger">Admin</span>
+                                    {% endif %}
+                                </td>
+                                <td class="small">{{ u.student_id|default:"-" }}</td>
+                                <td class="small">{{ u.phone|default:"-" }}</td>
                                 <td class="small text-muted">{{ u.date_joined|date:"M d, Y" }}</td>
                                 <td>
                                     {% if u.is_active %}<span class="badge bg-success small">Active</span>
@@ -64,74 +200,269 @@
                                     <form method="post" action="{% url 'toggle_user_active' u.pk %}" class="d-inline">
                                         {% csrf_token %}
                                         <button class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
-                                            {% if u.is_active %}Disable{% else %}Activate{% endif %}</button>
+                                            {% if u.is_active %}Disable{% else %}Activate{% endif %}
+                                        </button>
                                     </form>
+                                    {% else %}
+                                    <span class="text-muted small">You</span>
                                     {% endif %}
                                 </td>
                             </tr>
+                            {% empty %}
+                            <tr><td colspan="8" class="text-center py-4 text-muted">No users found</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <!-- 分页 -->
+                {% if users.has_other_pages %}
+                <nav class="mt-3">
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                        {% if users.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?tab=users&page={{ users.previous_page_number }}">Previous</a></li>
+                        {% endif %}
+                        <li class="page-item active"><span class="page-link">Page {{ users.number }} of {{ users.paginator.num_pages }}</span></li>
+                        {% if users.has_next %}
+                        <li class="page-item"><a class="page-link" href="?tab=users&page={{ users.next_page_number }}">Next</a></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+
+            <!-- Buyers 管理 -->
+            {% elif tab == 'buyers' %}
+            <h2 class="fw-bold mb-4">🛒 Buyers ({{ buyers.paginator.count }})</h2>
+            <div class="card-plain p-4" style="background:#FAFAFA;">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Total Orders</th>
+                                <th>Total Spent</th>
+                                <th>Joined</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for b in buyers %}
+                            <tr>
+                                <td class="fw-semibold">{{ b.username }}</td>
+                                <td class="small">{{ b.email|default:"-" }}</td>
+                                <td>{{ b.orders.count }}</td>
+                                <td class="fw-bold" style="color:var(--pink-deep);">RM {{ b.total_spent }}</td>
+                                <td class="small text-muted">{{ b.date_joined|date:"M d, Y" }}</td>
+                                <td>{% if b.is_active %}<span class="badge bg-success small">Active</span>{% else %}<span class="badge bg-secondary small">Disabled</span>{% endif %}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="6" class="text-center py-4 text-muted">No buyers found</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
-            {% elif tab == 'approvals' %}
-            <div class="card-plain p-4">
-                <h5 class="fw-bold">Pending Design Approvals</h5>
+
+            <!-- Sellers 管理 -->
+            {% elif tab == 'sellers' %}
+            <h2 class="fw-bold mb-4">🎨 Sellers ({{ sellers.paginator.count }})</h2>
+            <div class="card-plain p-4" style="background:#FAFAFA;">
                 <div class="table-responsive">
-                    <table class="table align-middle">
+                    <table class="table align-middle mb-0">
                         <thead class="table-light">
-                            <tr><th></th><th>Designer</th><th>Title</th><th>Price</th><th>Submitted</th><th>Action</th></tr>
+                            <tr>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Products</th>
+                                <th>Total Sales</th>
+                                <th>Earnings</th>
+                                <th>Joined</th>
+                                <th>Status</th>
+                            </tr>
                         </thead>
                         <tbody>
-                            {% for p in pending_products %}
+                            {% for s in sellers %}
+                            <tr>
+                                <td class="fw-semibold">{{ s.username }}</td>
+                                <td class="small">{{ s.email|default:"-" }}</td>
+                                <td>{{ s.products.count }}</td>
+                                <td>{{ s.sold_items.count }}</td>
+                                <td class="fw-bold" style="color:var(--pink-deep);">RM {{ s.total_earnings }}</td>
+                                <td class="small text-muted">{{ s.date_joined|date:"M d, Y" }}</td>
+                                <td>{% if s.is_active %}<span class="badge bg-success small">Active</span>{% else %}<span class="badge bg-secondary small">Disabled</span>{% endif %}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="7" class="text-center py-4 text-muted">No sellers found</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Products 管理 -->
+            {% elif tab == 'products' %}
+            <h2 class="fw-bold mb-4">👕 All Products ({{ products.paginator.count }})</h2>
+            
+            <form method="get" class="mb-4">
+                <input type="hidden" name="tab" value="products">
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <input type="text" name="search" class="form-control" placeholder="Search products..." value="{{ search }}">
+                    </div>
+                    <div class="col-md-2">
+                        <select name="status" class="form-select">
+                            <option value="">All Status</option>
+                            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                            <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                            <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select name="category" class="form-select">
+                            <option value="">All Categories</option>
+                            <option value="tshirt" {% if category_filter == 'tshirt' %}selected{% endif %}>T-Shirt</option>
+                            <option value="hoodie" {% if category_filter == 'hoodie' %}selected{% endif %}>Hoodie</option>
+                            <option value="cap" {% if category_filter == 'cap' %}selected{% endif %}>Cap</option>
+                            <option value="tote" {% if category_filter == 'tote' %}selected{% endif %}>Tote Bag</option>
+                            <option value="other" {% if category_filter == 'other' %}selected{% endif %}>Other</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-pink">Filter</button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="card-plain p-4" style="background:#FAFAFA;">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th></th>
+                                <th>Title</th>
+                                <th>Seller</th>
+                                <th>Price</th>
+                                <th>Category</th>
+                                <th>Sales</th>
+                                <th>Rating</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in products %}
                             <tr>
                                 <td>
                                     {% if p.image %}<img src="{{ p.image.url }}" style="width:45px;height:45px;object-fit:cover;border-radius:6px;">
                                     {% else %}<div style="width:45px;height:45px;" class="bg-light rounded d-flex align-items-center justify-content-center">👕</div>{% endif %}
                                 </td>
-                                <td>{{ p.seller.get_full_name|default:p.seller.username }}</td>
                                 <td class="fw-semibold">{{ p.title }}</td>
+                                <td>{{ p.seller.username }}</td>
                                 <td>RM {{ p.price }}</td>
-                                <td class="small text-muted">{{ p.created_at|date:"M d, Y" }}</td>
+                                <td><span class="badge bg-light text-dark border small">{{ p.get_category_display }}</span></td>
+                                <td>{{ p.total_sales }}</td>
+                                <td>{{ p.rating }}⭐</td>
                                 <td>
+                                    {% if p.status == 'pending' %}<span class="badge bg-warning text-dark">Pending</span>
+                                    {% elif p.status == 'approved' %}<span class="badge bg-success">Approved</span>
+                                    {% else %}<span class="badge bg-danger">Rejected</span>{% endif %}
+                                </td>
+                                <td>
+                                    {% if p.status == 'pending' %}
                                     <form method="post" action="{% url 'approve_design' p.pk %}" class="d-inline">
-                                        {% csrf_token %}<button class="btn btn-sm btn-success">✓</button>
+                                        {% csrf_token %}<button class="btn btn-sm btn-success" title="Approve">✓</button>
                                     </form>
                                     <form method="post" action="{% url 'reject_design' p.pk %}" class="d-inline">
-                                        {% csrf_token %}<button class="btn btn-sm btn-danger">✕</button>
+                                        {% csrf_token %}<button class="btn btn-sm btn-danger" title="Reject">✕</button>
                                     </form>
+                                    {% else %}
+                                    <a href="{% url 'product_detail' p.pk %}" class="btn btn-sm btn-outline-secondary">View</a>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="6" class="text-center py-4 text-muted">No pending designs 🎉</td></tr>
+                            <tr><td colspan="9" class="text-center py-4 text-muted">No products found</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
-            {% elif tab == 'analytics' %}
-            <div class="card-plain p-4">
-                <h5 class="fw-bold">All Orders</h5>
+
+            <!-- Orders 管理 -->
+            {% elif tab == 'orders' %}
+            <h2 class="fw-bold mb-4">📦 Recent Orders</h2>
+            <div class="card-plain p-4" style="background:#FAFAFA;">
                 <div class="table-responsive">
-                    <table class="table align-middle">
+                    <table class="table align-middle mb-0">
                         <thead class="table-light">
-                            <tr><th>#</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Buyer</th>
+                                <th>Items</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
                         </thead>
                         <tbody>
                             {% for o in orders %}
                             <tr>
-                                <td class="fw-semibold">{{ o.id }}</td>
+                                <td class="fw-semibold">#{{ o.id }}</td>
                                 <td>{{ o.user.username }}</td>
-                                <td>RM {{ o.total_amount }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ o.items.count }} items</span></td>
+                                <td class="fw-bold" style="color:var(--pink-deep);">RM {{ o.total_amount }}</td>
                                 <td>
-                                    {% if o.status == 'paid' %}<span class="badge bg-success small">{{ o.get_status_display }}</span>
-                                    {% elif o.status == 'completed' %}<span class="badge bg-primary small">{{ o.get_status_display }}</span>
-                                    {% else %}<span class="badge bg-warning text-dark small">{{ o.get_status_display }}</span>{% endif %}
+                                    {% if o.status == 'pending' %}<span class="badge bg-warning text-dark">Pending</span>
+                                    {% elif o.status == 'paid' %}<span class="badge bg-info">Paid</span>
+                                    {% elif o.status == 'shipped' %}<span class="badge bg-primary">Shipped</span>
+                                    {% elif o.status == 'completed' %}<span class="badge bg-success">Completed</span>
+                                    {% else %}<span class="badge bg-danger">Cancelled</span>{% endif %}
                                 </td>
                                 <td class="small text-muted">{{ o.created_at|date:"M d, Y H:i" }}</td>
+                                <td>
+                                    <a href="{% url 'order_detail' o.id %}" class="btn btn-sm btn-outline-pink">View</a>
+                                </td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="5" class="text-center py-4 text-muted">No orders yet.</td></tr>
+                            <tr><td colspan="7" class="text-center py-4 text-muted">No orders found</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Reviews 管理 -->
+            {% elif tab == 'reviews' %}
+            <h2 class="fw-bold mb-4">⭐ All Reviews ({{ reviews.paginator.count }})</h2>
+            <div class="card-plain p-4" style="background:#FAFAFA;">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>User</th>
+                                <th>Product</th>
+                                <th>Rating</th>
+                                <th>Comment</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in reviews %}
+                            <tr>
+                                <td class="fw-semibold">{{ r.user.username }}</td>
+                                <td>
+                                    <a href="{% url 'product_detail' r.product.pk %}" class="text-decoration-none">
+                                        {{ r.product.title }}
+                                    </a>
+                                </td>
+                                <td>{{ r.rating }}⭐</td>
+                                <td class="small">{{ r.comment|truncatewords:15 }}</td>
+                                <td class="small text-muted">{{ r.created_at|date:"M d, Y" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-center py-4 text-muted">No reviews found</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
