@@ -4,7 +4,9 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.db.models import Q, Sum, Count, F
 from django.core.paginator import Paginator
+from django.http import Http404
 from decimal import Decimal
+from urllib.parse import urlparse
 
 from .models import Product, CartItem, Order, OrderItem, User, Review
 from .forms import (
@@ -13,6 +15,7 @@ from .forms import (
 )
 
 
+# ── 辅助函数 ─────────────────────────────────────────────
 
 def _cart_count(user):
     if user.is_authenticated:
@@ -27,8 +30,27 @@ def _cart_items(user):
 
 
 def _cart_total(user):
-    return sum(i.subtotal for i in _cart_items(user))
+    """计算购物车总价（服务端验证）"""
+    items = _cart_items(user)
+    total = Decimal('0.00')
+    for item in items:
+        if item.product.is_available:  # 只计算上架且审核通过的商品
+            total += item.product.price * item.quantity
+    return total
 
+
+def _is_safe_url(url, request):
+    """验证重定向URL是否安全（防止开放重定向攻击）"""
+    if not url:
+        return False
+    parsed = urlparse(url)
+    # 只允许相对路径或本站URL
+    if parsed.netloc and parsed.netloc != request.get_host():
+        return False
+    return True
+
+
+# ── 首页 & 商品详情 ─────────────────────────────────────────────
 
 def index(request):
     query = request.GET.get('q', '').strip()
@@ -89,6 +111,8 @@ def product_detail(request, pk):
     })
 
 
+# ── 用户认证 ─────────────────────────────────────────────
+
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('index')
@@ -126,6 +150,7 @@ def logout_view(request):
     messages.info(request, 'You have been logged out.')
     return redirect('index')
 
+
 # ── 修改密码 ─────────────────────────────────────────────
 
 @login_required
@@ -134,7 +159,7 @@ def password_change_view(request):
         form = CustomPasswordChangeForm(request.user, request.POST)
         if form.is_valid():
             user = form.save()
-            update_session_auth_hash(request, user)  # 保持登录状态
+            update_session_auth_hash(request, user)
             messages.success(request, 'Password changed successfully!')
             return redirect('index')
         messages.error(request, 'Please correct the errors below.')
@@ -146,7 +171,7 @@ def password_change_view(request):
     })
 
 
-# ── 忘记密码（发邮件） ────────────────────────────────────
+# ── 忘记密码 ─────────────────────────────────────────────
 
 def password_reset_view(request):
     if request.user.is_authenticated:
@@ -216,6 +241,8 @@ def password_reset_complete_view(request):
     })
 
 
+# ── 购物车 ─────────────────────────────────────────────
+
 @login_required
 def cart_view(request):
     items = _cart_items(request.user)
@@ -238,20 +265,49 @@ def add_to_cart(request):
     if request.method == 'POST':
         product_id = request.POST.get('product_id')
         size = request.POST.get('size', 'M')
-        quantity = int(request.POST.get('quantity', 1))
+        
+        # 【修复】验证 quantity 参数
+        try:
+            quantity = int(request.POST.get('quantity', 1))
+            if quantity < 1:
+                quantity = 1
+            elif quantity > 99:
+                quantity = 99  # 限制单次添加数量
+        except (ValueError, TypeError):
+            quantity = 1
+        
+        # 【修复】验证 size 参数
+        valid_sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
+        if size not in valid_sizes:
+            size = 'M'
+        
         product = get_object_or_404(
             Product, pk=product_id, status='approved', is_published=True
         )
+        
+        # 【修复】检查购物车商品总数限制
+        current_count = _cart_count(request.user)
+        if current_count + quantity > 999:
+            messages.warning(request, 'Cart limit reached! Maximum 999 items.')
+            return redirect('product_detail', pk=product_id)
+        
         item, created = CartItem.objects.get_or_create(
             user=request.user, product=product, size=size,
             defaults={'quantity': quantity}
         )
         if not created:
+            # 【修复】检查单个商品数量上限
+            if item.quantity + quantity > 99:
+                messages.warning(request, f'Maximum 99 items per product!')
+                return redirect('product_detail', pk=product_id)
             item.quantity += quantity
             item.save()
+        
         messages.success(request, f'"{product.title}" added to cart!')
+        
+        # 【修复】验证重定向URL安全性
         nxt = request.POST.get('next', '')
-        if nxt:
+        if nxt and _is_safe_url(nxt, request):
             return redirect(nxt)
         return redirect('index')
     return redirect('index')
@@ -261,7 +317,17 @@ def add_to_cart(request):
 def update_cart(request, item_id):
     if request.method == 'POST':
         item = get_object_or_404(CartItem, pk=item_id, user=request.user)
-        qty = int(request.POST.get('quantity', 1))
+        
+        # 【修复】验证 quantity 参数
+        try:
+            qty = int(request.POST.get('quantity', 1))
+            if qty < 0:
+                qty = 0
+            elif qty > 99:
+                qty = 99
+        except (ValueError, TypeError):
+            qty = item.quantity
+        
         if qty <= 0:
             item.delete()
             messages.info(request, 'Item removed from cart.')
@@ -281,37 +347,56 @@ def remove_from_cart(request, item_id):
     return redirect('cart')
 
 
+# ── 结账 & 订单 ─────────────────────────────────────────────
+
 @login_required
 def checkout(request):
     if request.method != 'POST':
         return redirect('cart')
+    
     items = _cart_items(request.user)
     if not items.exists():
         messages.warning(request, 'Your cart is empty!')
         return redirect('cart')
+    
     form = CheckoutForm(request.POST)
     if not form.is_valid():
-        messages.error(request, 'Please fill in all required fields.')
+        messages.error(request, 'Please fill in all required fields correctly.')
         return redirect('cart')
+    
+    # 【修复】服务端计算总价，不依赖客户端
+    total = _cart_total(request.user)
+    if total <= 0:
+        messages.error(request, 'Invalid order amount!')
+        return redirect('cart')
+    
+    # 【修复】验证所有商品仍然可用
+    for item in items:
+        if not item.product.is_available:
+            messages.error(request, f'"{item.product.title}" is no longer available!')
+            return redirect('cart')
+    
     order = Order.objects.create(
         user=request.user,
-        total_amount=_cart_total(request.user),
+        total_amount=total,  # 使用服务端计算的金额
         status='paid',
         full_name=form.cleaned_data['full_name'],
         email=form.cleaned_data['email'],
         address=form.cleaned_data['address'],
         phone=form.cleaned_data.get('phone', ''),
     )
+    
     for item in items:
         OrderItem.objects.create(
             order=order, product=item.product,
             seller=item.product.seller,
             quantity=item.quantity, size=item.size,
-            price=item.product.price,
+            price=item.product.price,  # 使用商品当前价格
         )
         Product.objects.filter(pk=item.product.pk).update(
             total_sales=F('total_sales') + item.quantity
         )
+    
     items.delete()
     messages.success(request, 'Order placed successfully!')
     return redirect('order_success', order_id=order.id)
@@ -326,7 +411,8 @@ def order_success(request, order_id):
         'active_page': 'order',
     })
 
-# ── 订单历史功能 ─────────────────────────────────────────────
+
+# ── 订单历史 ─────────────────────────────────────────────
 
 @login_required
 def order_history(request):
@@ -335,9 +421,8 @@ def order_history(request):
         'items__product', 'items__seller'
     )
     
-    # 筛选条件
     status = request.GET.get('status', '').strip()
-    if status:
+    if status and status in dict(Order.STATUS_CHOICES):
         orders = orders.filter(status=status)
     
     paginator = Paginator(orders, 10)
@@ -355,7 +440,7 @@ def order_history(request):
 
 @login_required
 def order_detail(request, order_id):
-    """订单详情 - 买家只能看自己的，卖家可以看包含自己商品的，管理员可以看所有"""
+    """订单详情 - 权限严格控制"""
     user = request.user
     
     if user.role == 'admin':
@@ -364,14 +449,12 @@ def order_detail(request, order_id):
             pk=order_id
         )
     elif user.role == 'seller':
-        # 卖家只能看包含自己商品的订单
         order = get_object_or_404(
             Order.objects.filter(items__seller=user).distinct()
                 .prefetch_related('items__product', 'items__seller', 'user'),
             pk=order_id
         )
     else:
-        # 买家只能看自己的订单
         order = get_object_or_404(
             Order.objects.prefetch_related('items__product', 'items__seller'),
             pk=order_id, user=user
@@ -391,19 +474,30 @@ def order_detail(request, order_id):
     return render(request, 'order_detail.html', context)
 
 
+# ── 评价 ─────────────────────────────────────────────
+
 @login_required
 def add_review(request, pk):
     if request.method == 'POST':
         product = get_object_or_404(Product, pk=pk, status='approved')
+        
+        # 【修复】禁止卖家评价自己的商品
+        if product.seller == request.user:
+            messages.warning(request, 'You cannot review your own product!')
+            return redirect('product_detail', pk=pk)
+        
         if Review.objects.filter(user=request.user, product=product).exists():
             messages.warning(request, 'You have already reviewed this product.')
             return redirect('product_detail', pk=pk)
+        
         form = ReviewForm(request.POST)
         if form.is_valid():
             review = form.save(commit=False)
             review.user = request.user
             review.product = product
             review.save()
+            
+            # 更新商品评分
             avg = product.reviews.aggregate(a=Sum('rating') / Count('id'))['a']
             Product.objects.filter(pk=pk).update(rating=round(avg, 1))
             messages.success(request, 'Review submitted!')
@@ -411,6 +505,8 @@ def add_review(request, pk):
             messages.error(request, 'Invalid review data.')
     return redirect('product_detail', pk=pk)
 
+
+# ── 卖家功能 ─────────────────────────────────────────────
 
 def _is_seller(u):
     return u.is_authenticated and u.role == 'seller'
@@ -438,7 +534,7 @@ def seller_dashboard(request):
 @login_required
 @user_passes_test(_is_seller, login_url='/')
 def design_studio(request):
-    """设计工作室 - 画板功能"""
+    """设计工作室"""
     return render(request, 'seller/design_studio.html', {
         'active_page': 'seller',
     })
@@ -447,20 +543,17 @@ def design_studio(request):
 @login_required
 @user_passes_test(_is_seller, login_url='/')
 def seller_order_history(request):
-    """卖家查看自己的销售记录"""
-    # 获取包含该卖家商品的订单
+    """卖家查看销售记录"""
     order_items = OrderItem.objects.filter(
         seller=request.user
     ).select_related(
         'order', 'product', 'order__user'
     ).order_by('-order__created_at')
     
-    # 筛选条件
     status = request.GET.get('status', '').strip()
-    if status:
+    if status and status in dict(Order.STATUS_CHOICES):
         order_items = order_items.filter(order__status=status)
     
-    # 按订单分组
     orders_data = {}
     for item in order_items:
         order = item.order
@@ -522,6 +615,12 @@ def seller_inventory(request):
 @user_passes_test(_is_seller, login_url='/')
 def edit_design(request, pk):
     product = get_object_or_404(Product, pk=pk, seller=request.user)
+    
+    # 【修复】禁止编辑已有订单的商品（可能导致价格不一致）
+    if OrderItem.objects.filter(product=product).exists():
+        messages.warning(request, 'Cannot edit products with existing orders!')
+        return redirect('seller_inventory')
+    
     if request.method == 'POST':
         form = ProductForm(request.POST, request.FILES, instance=product)
         if form.is_valid():
@@ -550,6 +649,8 @@ def unpublish_design(request, pk):
     return redirect('seller_inventory')
 
 
+# ── 管理员功能 ─────────────────────────────────────────────
+
 def _is_admin(u):
     return u.is_authenticated and u.role == 'admin'
 
@@ -557,11 +658,11 @@ def _is_admin(u):
 @login_required
 @user_passes_test(_is_admin, login_url='/')
 def admin_management(request):
-    """管理员管理面板 - 全面的数据管理"""
+    """管理员管理面板"""
     tab = request.GET.get('tab', 'dashboard')
     search = request.GET.get('search', '').strip()
     
-    # 基础统计数据
+    # 统计数据
     total_users = User.objects.count()
     buyer_count = User.objects.filter(role='buyer').count()
     seller_count = User.objects.filter(role='seller').count()
@@ -602,9 +703,8 @@ def admin_management(request):
                 Q(email__icontains=search) |
                 Q(student_id__icontains=search)
             )
-        if role_filter:
+        if role_filter in ['buyer', 'seller', 'admin']:
             users = users.filter(role=role_filter)
-        
         paginator = Paginator(users, 20)
         context['users'] = paginator.get_page(request.GET.get('page'))
         context['role_filter'] = role_filter
@@ -613,8 +713,7 @@ def admin_management(request):
         buyers = User.objects.filter(role='buyer').order_by('-date_joined')
         if search:
             buyers = buyers.filter(
-                Q(username__icontains=search) |
-                Q(email__icontains=search)
+                Q(username__icontains=search) | Q(email__icontains=search)
             )
         paginator = Paginator(buyers, 20)
         context['buyers'] = paginator.get_page(request.GET.get('page'))
@@ -623,8 +722,7 @@ def admin_management(request):
         sellers = User.objects.filter(role='seller').order_by('-date_joined')
         if search:
             sellers = sellers.filter(
-                Q(username__icontains=search) |
-                Q(email__icontains=search)
+                Q(username__icontains=search) | Q(email__icontains=search)
             )
         paginator = Paginator(sellers, 20)
         context['sellers'] = paginator.get_page(request.GET.get('page'))
@@ -633,17 +731,14 @@ def admin_management(request):
         products = Product.objects.all().select_related('seller').order_by('-created_at')
         status_filter = request.GET.get('status', '')
         category_filter = request.GET.get('category', '')
-        
         if search:
             products = products.filter(
-                Q(title__icontains=search) |
-                Q(seller__username__icontains=search)
+                Q(title__icontains=search) | Q(seller__username__icontains=search)
             )
-        if status_filter:
+        if status_filter in ['pending', 'approved', 'rejected']:
             products = products.filter(status=status_filter)
-        if category_filter:
+        if category_filter in dict(Product.CATEGORY_CHOICES):
             products = products.filter(category=category_filter)
-        
         paginator = Paginator(products, 20)
         context['products'] = paginator.get_page(request.GET.get('page'))
         context['status_filter'] = status_filter
@@ -658,28 +753,21 @@ def admin_management(request):
         paginator = Paginator(reviews, 20)
         context['reviews'] = paginator.get_page(request.GET.get('page'))
     
-    # 旧版 tab 支持
-    elif tab == 'approvals':
-        context['pending_products'] = Product.objects.filter(
-            status='pending').select_related('seller')
-    
     return render(request, 'admin_panel/management.html', context)
 
 
 @login_required
 @user_passes_test(_is_admin, login_url='/')
 def admin_order_history(request):
-    """管理员查看所有历史订单"""
+    """管理员订单历史"""
     orders = Order.objects.all().select_related('user').prefetch_related(
         'items__product', 'items__seller'
     ).order_by('-created_at')
     
-    # 筛选条件
     status = request.GET.get('status', '').strip()
-    if status:
+    if status and status in dict(Order.STATUS_CHOICES):
         orders = orders.filter(status=status)
     
-    # 搜索
     search = request.GET.get('search', '').strip()
     if search:
         orders = orders.filter(
@@ -691,7 +779,6 @@ def admin_order_history(request):
     paginator = Paginator(orders, 15)
     page_obj = paginator.get_page(request.GET.get('page'))
     
-    # 统计数据
     total_orders = Order.objects.count()
     total_revenue = Order.objects.filter(
         status__in=['paid', 'completed']
@@ -736,8 +823,22 @@ def reject_design(request, pk):
 def toggle_user_active(request, pk):
     if request.method == 'POST':
         u = get_object_or_404(User, pk=pk)
+        # 【修复】禁止禁用自己
+        if u.pk == request.user.pk:
+            messages.error(request, 'Cannot disable your own account!')
+            return redirect(request.META.get('HTTP_REFERER', 'admin_management'))
         u.is_active = not u.is_active
         u.save()
         w = 'activated' if u.is_active else 'deactivated'
         messages.info(request, f'User "{u.username}" {w}.')
     return redirect(request.META.get('HTTP_REFERER', 'admin_management'))
+
+
+# ── 404 & 500 错误处理 ─────────────────────────────────────────────
+
+def handler404(request, exception):
+    return render(request, 'errors/404.html', status=404)
+
+
+def handler500(request):
+    return render(request, 'errors/500.html', status=500)

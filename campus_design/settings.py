@@ -3,8 +3,13 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# 【安全警告】生产环境请更换为随机生成的密钥
 SECRET_KEY = 'django-insecure-campus-design-dev-key-change-in-production'
+
+# 【安全警告】生产环境必须设置为 False
 DEBUG = True
+
+# 【安全警告】生产环境请设置具体的域名
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
@@ -78,6 +83,16 @@ LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# 开发环境：邮件打印到终端，不需要真实邮箱
+# 开发环境：邮件打印到终端
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'noreply@campusdesign.com'
+
+# 安全设置（生产环境启用）
+# SECURE_SSL_REDIRECT = True
+# SECURE_HSTS_SECONDS = 31536000
+# SESSION_COOKIE_SECURE = True
+# CSRF_COOKIE_SECURE = True
+
+# 文件上传限制
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
